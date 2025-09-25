@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "28999458539",
+    "project_id": "myautocentral2025",
+    "storage_bucket": "myautocentral2025.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:28999458539:android:ad8bd85a5e541b3cd368ae",
+        "android_client_info": {
+          "package_name": "com.example.autocentral"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB_sqhQvopSzNYiQQnJTKdb2eitA1uEjlY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
