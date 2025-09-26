@@ -14,12 +14,17 @@ android {
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        // [MODIFICATION 1: ACTIVER LE DESUGARING]
+        // flutter_local_notifications requires this to use Java 8 APIs on older Android versions.
+        isCoreLibraryDesugaringEnabled = true
+        
+        // Setting compatibility to Java 1.8 (Java 8)
+        sourceCompatibility = JavaVersion.VERSION_1_8
+        targetCompatibility = JavaVersion.VERSION_1_8
     }
 
     kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_11.toString()
+        jvmTarget = JavaVersion.VERSION_1_8.toString()
     }
 
     defaultConfig {
@@ -44,4 +49,10 @@ android {
 
 flutter {
     source = "../.."
+}
+
+// [MODIFICATION 2: AJOUTER LA DÉPENDANCE DE DESUGARING]
+dependencies {
+    // This dependency adds the necessary libraries for desugaring.
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
 }

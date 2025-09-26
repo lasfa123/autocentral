@@ -18,7 +18,7 @@ dependencies:
   cloud_firestore: ^4.9.0
   firebase_storage: ^11.1.0
   intl: ^0.18.1
-  flutter_local_notifications: ^16.3.0
+  flutter_local_notifications: ^17.2.2
   timezone: ^0.9.2
 
   # 🔹 File picker pour upload de documents
