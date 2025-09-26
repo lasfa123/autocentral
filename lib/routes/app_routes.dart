@@ -8,7 +8,7 @@ import '../features/documents/document_form_page.dart';
 
 class AppRoutes {
   static Map<String, WidgetBuilder> routes = {
-    '/': (context) => const DashboardPage(),
+    '/': (context) => const HomeDashboardPage(),
     '/vehicleList': (context) => VehicleListPage(),
     '/vehicleForm': (context) => const VehicleFormPage(),
   };
@@ -28,7 +28,7 @@ class AppRoutes {
         );
       default:
         return MaterialPageRoute(
-          builder: (_) => const DashboardPage(),
+          builder: (_) => const HomeDashboardPage(),
         );
     }
   }
