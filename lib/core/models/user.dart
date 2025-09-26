@@ -1,73 +1,92 @@
-// lib/core/models/user.dart
-
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 
-class AppUser {
-  final String uid;
+class UserModel {
+  final String id;
   final String email;
-  final String? firstName;
-  final String? lastName;
-  final DateTime? createdAt;
+  final String? displayName;
+  final String? photoUrl;
+  final DateTime createdAt;
   final DateTime? updatedAt;
+  final Map<String, dynamic>? preferences;
+  final bool isEmailVerified;
+  final String? phoneNumber;
 
-  AppUser({
-    required this.uid,
+  UserModel({
+    required this.id,
     required this.email,
-    this.firstName,
-    this.lastName,
-    this.createdAt,
+    this.displayName,
+    this.photoUrl,
+    required this.createdAt,
     this.updatedAt,
+    this.preferences,
+    this.isEmailVerified = false,
+    this.phoneNumber,
   });
 
-  /// Nom complet
-  String get fullName {
-    if ((firstName ?? '').isEmpty && (lastName ?? '').isEmpty) {
-      return email;
-    }
-    return '${firstName ?? ''} ${lastName ?? ''}'.trim();
-  }
-
-  /// Initiales pour l'avatar
-  String get initials {
-    final f = (firstName?.isNotEmpty ?? false) ? firstName![0] : '';
-    final l = (lastName?.isNotEmpty ?? false) ? lastName![0] : '';
-    return (f + l).toUpperCase().isNotEmpty ? (f + l).toUpperCase() : email[0].toUpperCase();
-  }
-
-  /// Convertir Firestore → modèle
-  factory AppUser.fromMap(Map<String, dynamic> data) {
-    return AppUser(
-      uid: data['uid'] ?? '',
-      email: data['email'] ?? '',
-      firstName: data['firstName'],
-      lastName: data['lastName'],
-      createdAt: (data['createdAt'] as Timestamp?)?.toDate(),
-      updatedAt: (data['updatedAt'] as Timestamp?)?.toDate(),
+  // Convertir Firestore -> UserModel
+  factory UserModel.fromMap(Map<String, dynamic> map, String docId) {
+    return UserModel(
+      id: docId,
+      email: map['email'] ?? '',
+      displayName: map['displayName'],
+      photoUrl: map['photoUrl'],
+      createdAt: (map['createdAt'] as Timestamp).toDate(),
+      updatedAt: map['updatedAt'] != null
+          ? (map['updatedAt'] as Timestamp).toDate()
+          : null,
+      preferences: map['preferences'] as Map<String, dynamic>?,
+      isEmailVerified: map['isEmailVerified'] ?? false,
+      phoneNumber: map['phoneNumber'],
     );
   }
 
-  /// Convertir FirebaseUser + FirestoreData → modèle
-  factory AppUser.fromFirebase(User user, {Map<String, dynamic>? profile}) {
-    return AppUser(
-      uid: user.uid,
-      email: user.email ?? '',
-      firstName: profile?['firstName'],
-      lastName: profile?['lastName'],
-      createdAt: (profile?['createdAt'] as Timestamp?)?.toDate() ?? user.metadata.creationTime,
-      updatedAt: (profile?['updatedAt'] as Timestamp?)?.toDate() ?? user.metadata.lastSignInTime,
-    );
-  }
-
-  /// Convertir modèle → Firestore
+  // Convertir UserModel -> Map pour Firestore
   Map<String, dynamic> toMap() {
     return {
-      'uid': uid,
       'email': email,
-      'firstName': firstName,
-      'lastName': lastName,
-      'createdAt': createdAt != null ? Timestamp.fromDate(createdAt!) : FieldValue.serverTimestamp(),
-      'updatedAt': updatedAt != null ? Timestamp.fromDate(updatedAt!) : FieldValue.serverTimestamp(),
+      'displayName': displayName,
+      'photoUrl': photoUrl,
+      'createdAt': Timestamp.fromDate(createdAt),
+      'updatedAt': updatedAt != null ? Timestamp.fromDate(updatedAt!) : null,
+      'preferences': preferences,
+      'isEmailVerified': isEmailVerified,
+      'phoneNumber': phoneNumber,
     };
   }
+
+  // Créer une copie avec des modifications
+  UserModel copyWith({
+    String? displayName,
+    String? photoUrl,
+    DateTime? updatedAt,
+    Map<String, dynamic>? preferences,
+    bool? isEmailVerified,
+    String? phoneNumber,
+  }) {
+    return UserModel(
+      id: id,
+      email: email,
+      displayName: displayName ?? this.displayName,
+      photoUrl: photoUrl ?? this.photoUrl,
+      createdAt: createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      preferences: preferences ?? this.preferences,
+      isEmailVerified: isEmailVerified ?? this.isEmailVerified,
+      phoneNumber: phoneNumber ?? this.phoneNumber,
+    );
+  }
+
+  @override
+  String toString() {
+    return 'UserModel(id: $id, email: $email, displayName: $displayName)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is UserModel && other.id == id && other.email == email;
+  }
+
+  @override
+  int get hashCode => id.hashCode ^ email.hashCode;
 }
