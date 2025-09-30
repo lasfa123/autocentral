@@ -46,6 +46,7 @@ class DefaultFirebaseOptions {
     messagingSenderId: '28999458539',
     projectId: 'myautocentral2025',
     authDomain: 'myautocentral2025.firebaseapp.com',
+    databaseURL: 'https://myautocentral2025-default-rtdb.europe-west1.firebasedatabase.app',
     storageBucket: 'myautocentral2025.firebasestorage.app',
   );
 
@@ -54,6 +55,7 @@ class DefaultFirebaseOptions {
     appId: '1:28999458539:android:ad8bd85a5e541b3cd368ae',
     messagingSenderId: '28999458539',
     projectId: 'myautocentral2025',
+    databaseURL: 'https://myautocentral2025-default-rtdb.europe-west1.firebasedatabase.app',
     storageBucket: 'myautocentral2025.firebasestorage.app',
   );
 
@@ -62,6 +64,7 @@ class DefaultFirebaseOptions {
     appId: '1:28999458539:ios:32c762f2cac7a84ad368ae',
     messagingSenderId: '28999458539',
     projectId: 'myautocentral2025',
+    databaseURL: 'https://myautocentral2025-default-rtdb.europe-west1.firebasedatabase.app',
     storageBucket: 'myautocentral2025.firebasestorage.app',
     iosBundleId: 'com.example.autocentral',
   );
@@ -71,6 +74,7 @@ class DefaultFirebaseOptions {
     appId: '1:28999458539:ios:32c762f2cac7a84ad368ae',
     messagingSenderId: '28999458539',
     projectId: 'myautocentral2025',
+    databaseURL: 'https://myautocentral2025-default-rtdb.europe-west1.firebasedatabase.app',
     storageBucket: 'myautocentral2025.firebasestorage.app',
     iosBundleId: 'com.example.autocentral',
   );
@@ -81,6 +85,8 @@ class DefaultFirebaseOptions {
     messagingSenderId: '28999458539',
     projectId: 'myautocentral2025',
     authDomain: 'myautocentral2025.firebaseapp.com',
+    databaseURL: 'https://myautocentral2025-default-rtdb.europe-west1.firebasedatabase.app',
     storageBucket: 'myautocentral2025.firebasestorage.app',
   );
+
 }

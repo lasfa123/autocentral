@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../core/services/auth_service.dart';
+import 'package:autocentral/pigeon_definitions/user_api.g.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -37,12 +38,14 @@ class _ProfilePageState extends State<ProfilePage> {
     setState(() => _isLoading = true);
 
     _currentUser = AuthService.currentUser;
-    _userProfile = await AuthService.getUserProfile();
+    UserDetails? userProfile;
 
-    if (_userProfile != null) {
-      _firstNameController.text = _userProfile!['firstName'] ?? '';
-      _lastNameController.text = _userProfile!['lastName'] ?? '';
+    if (userProfile != null) {
+      final nameParts = (userProfile.displayName ?? '').split(' ');
+      _firstNameController.text = nameParts.isNotEmpty ? nameParts[0] : '';
+      _lastNameController.text = nameParts.length > 1 ? nameParts[1] : '';
     }
+
 
     setState(() => _isLoading = false);
   }

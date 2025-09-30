@@ -14,29 +14,54 @@ class HomeDashboardPage extends StatefulWidget {
   State<HomeDashboardPage> createState() => _HomeDashboardPageState();
 }
 
-class _HomeDashboardPageState extends State<HomeDashboardPage> {
+class _HomeDashboardPageState extends State<HomeDashboardPage> with TickerProviderStateMixin {
   final PageController _pageController = PageController();
+  late AnimationController _fadeController;
+  late Animation<double> _fadeAnimation;
   int _currentIndex = 0;
   List<CarModel> _upcomingExpirations = [];
+
+  // Palette de couleurs ultra propre et douce
+  static const Color _primaryColor = Color(0xFF2563EB); // Bleu moderne
+  static const Color _surfaceColor = Color(0xFFFCFCFD); // Blanc cassé très doux
+  static const Color _cardColor = Color(0xFFFFFFFF);
+  static const Color _textPrimary = Color(0xFF1F2937); // Gris anthracite
+  static const Color _textSecondary = Color(0xFF6B7280); // Gris moyen
+  static const Color _textTertiary = Color(0xFF9CA3AF); // Gris clair
+  static const Color _successColor = Color(0xFF10B981); // Vert émeraude
+  static const Color _warningColor = Color(0xFFF59E0B); // Ambre
+  static const Color _errorColor = Color(0xFFEF4444); // Rouge corail
+  static const Color _borderColor = Color(0xFFE5E7EB); // Bordure très subtile
 
   @override
   void initState() {
     super.initState();
+    _fadeController = AnimationController(
+      duration: const Duration(milliseconds: 600),
+      vsync: this,
+    );
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _fadeController, curve: Curves.easeOut),
+    );
     _loadUpcomingExpirations();
+    _fadeController.forward();
   }
 
   @override
   void dispose() {
     _pageController.dispose();
+    _fadeController.dispose();
     super.dispose();
   }
 
   Future<void> _loadUpcomingExpirations() async {
     try {
       final vehicles = await VehicleService.getVehiclesWithUpcomingExpirations();
-      setState(() {
-        _upcomingExpirations = vehicles;
-      });
+      if (mounted) {
+        setState(() {
+          _upcomingExpirations = vehicles;
+        });
+      }
     } catch (e) {
       // Gérer l'erreur silencieusement
     }
@@ -48,19 +73,22 @@ class _HomeDashboardPageState extends State<HomeDashboardPage> {
     final firstName = user?.displayName?.split(' ').first ?? 'Utilisateur';
 
     return Scaffold(
-      backgroundColor: Colors.grey[50],
-      body: PageView(
-        controller: _pageController,
-        onPageChanged: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
-        },
-        children: [
-          _buildHomePage(firstName),
-          const VehicleListPage(),
-          const ProfilePage(),
-        ],
+      backgroundColor: _surfaceColor,
+      body: FadeTransition(
+        opacity: _fadeAnimation,
+        child: PageView(
+          controller: _pageController,
+          onPageChanged: (index) {
+            setState(() {
+              _currentIndex = index;
+            });
+          },
+          children: [
+            _buildHomePage(firstName),
+            const VehicleListPage(),
+            const ProfilePage(),
+          ],
+        ),
       ),
       bottomNavigationBar: _buildBottomNavigationBar(),
     );
@@ -68,108 +96,149 @@ class _HomeDashboardPageState extends State<HomeDashboardPage> {
 
   Widget _buildHomePage(String firstName) {
     return CustomScrollView(
+      physics: const BouncingScrollPhysics(),
       slivers: [
-        // App Bar avec profil
-        SliverAppBar(
-          backgroundColor: Colors.white,
-          elevation: 0,
-          floating: true,
-          snap: true,
-          title: Row(
-            children: [
-              CircleAvatar(
-                radius: 18,
-                backgroundColor: Colors.blue[100],
-                child: Text(
-                  _getInitials(AuthService.currentUser),
-                  style: TextStyle(
-                    color: Colors.blue[700],
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                  ),
+        // Header épuré avec design moderne
+        SliverToBoxAdapter(
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(20, 60, 20, 24),
+            decoration: BoxDecoration(
+              color: _cardColor,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.02),
+                  blurRadius: 1,
+                  offset: const Offset(0, 1),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Bienvenue sur AutoCentral 👋',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey[600],
-                      fontWeight: FontWeight.normal,
-                    ),
-                  ),
-                  Text(
-                    firstName,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      color: Colors.black,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          actions: [
-            IconButton(
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Notifications bientôt disponibles'),
-                  ),
-                );
-              },
-              icon: Stack(
-                children: [
-                  const Icon(Icons.notifications_outlined, color: Colors.grey),
-                  if (_upcomingExpirations.isNotEmpty)
-                    Positioned(
-                      right: 0,
-                      top: 0,
-                      child: Container(
-                        width: 8,
-                        height: 8,
-                        decoration: const BoxDecoration(
-                          color: Colors.red,
-                          shape: BoxShape.circle,
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // En-tête utilisateur
+                Row(
+                  children: [
+                    Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            _primaryColor.withOpacity(0.1),
+                            _primaryColor.withOpacity(0.05),
+                          ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: _primaryColor.withOpacity(0.1),
+                          width: 1,
+                        ),
+                      ),
+                      child: Center(
+                        child: Text(
+                          _getInitials(AuthService.currentUser),
+                          style: TextStyle(
+                            color: _primaryColor,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 18,
+                            letterSpacing: 0.5,
+                          ),
                         ),
                       ),
                     ),
-                ],
-              ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Bonjour, $firstName',
+                            style: const TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.w700,
+                              color: _textPrimary,
+                              letterSpacing: -0.5,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Gérez vos véhicules en toute simplicité',
+                            style: TextStyle(
+                              fontSize: 15,
+                              color: _textSecondary,
+                              fontWeight: FontWeight.w400,
+                              height: 1.4,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    // Notification badge ultra propre
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: _surfaceColor,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: _borderColor),
+                      ),
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          Icon(
+                            Icons.notifications_none_rounded,
+                            color: _textSecondary,
+                            size: 20,
+                          ),
+                          if (_upcomingExpirations.isNotEmpty)
+                            Positioned(
+                              right: 8,
+                              top: 8,
+                              child: Container(
+                                width: 8,
+                                height: 8,
+                                decoration: const BoxDecoration(
+                                  color: _errorColor,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
-          ],
+          ),
         ),
 
-        // Contenu principal
+        // Contenu principal avec espacement généreux
         SliverPadding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(20),
           sliver: SliverList(
             delegate: SliverChildListDelegate([
-              // Message de bienvenue
-              Text(
-                'La sécurité et le suivi de votre véhicule réunis en un seul endroit.',
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Colors.grey[700],
-                  height: 1.4,
-                ),
-              ),
+              // Métriques rapides
+              _buildQuickMetrics(),
 
               const SizedBox(height: 24),
 
-              // Section "Besoin de votre attention"
-              _buildAttentionSection(),
+              // Actions rapides
+              _buildQuickActions(),
 
               const SizedBox(height: 24),
 
-              // Section Notifications/Activités récentes
-              _buildNotificationsSection(),
+              // Section prioritaire
+              _buildPrioritySection(),
 
-              const SizedBox(height: 100), // Espace pour le bottom nav
+              const SizedBox(height: 24),
+
+              // Activité récente
+              _buildRecentActivity(),
+
+              const SizedBox(height: 100),
             ]),
           ),
         ),
@@ -177,316 +246,523 @@ class _HomeDashboardPageState extends State<HomeDashboardPage> {
     );
   }
 
-  Widget _buildAttentionSection() {
-    // Items d'attention (checklist style Traxello)
-    final List<AttentionItem> items = [
-      AttentionItem('Créer compte', true),
-      AttentionItem('Ajouter véhicule', false), // TODO: Vérifier si l'utilisateur a des véhicules
-      AttentionItem('Configurer alertes intelligentes pour véhicule', false),
-      AttentionItem('Activer notifications', false),
-      AttentionItem('Renouveler abonnement', false),
-      AttentionItem('Renouveler documents', _upcomingExpirations.isNotEmpty),
-    ];
-
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.blue[50],
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(
-                  Icons.checklist,
-                  color: Colors.blue[600],
-                  size: 20,
-                ),
-              ),
-              const SizedBox(width: 12),
-              const Text(
-                'Besoin de votre attention',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          ...items.map((item) => _buildAttentionItem(item)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAttentionItem(AttentionItem item) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        children: [
-          Container(
-            width: 20,
-            height: 20,
-            decoration: BoxDecoration(
-              color: item.isCompleted ? Colors.green : Colors.white,
-              border: Border.all(
-                color: item.isCompleted ? Colors.green : Colors.grey[300]!,
-                width: 2,
-              ),
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: item.isCompleted
-                ? const Icon(Icons.check, color: Colors.white, size: 14)
-                : null,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              item.title,
-              style: TextStyle(
-                fontSize: 14,
-                color: item.isCompleted ? Colors.grey[600] : Colors.black,
-                decoration: item.isCompleted ? TextDecoration.lineThrough : null,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNotificationsSection() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.orange[50],
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(
-                  Icons.notifications,
-                  color: Colors.orange[600],
-                  size: 20,
-                ),
-              ),
-              const SizedBox(width: 12),
-              const Text(
-                'Notifications',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const Spacer(),
-              if (_upcomingExpirations.isNotEmpty)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.red[50],
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    '${_upcomingExpirations.length}',
-                    style: TextStyle(
-                      color: Colors.red[700],
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              const SizedBox(width: 8),
-              GestureDetector(
-                onTap: () {
-                  // TODO: Voir toutes les notifications
-                },
-                child: Text(
-                  'Voir plus →',
-                  style: TextStyle(
-                    color: Colors.blue[600],
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-
-          // Notifications simulées
-          _buildNotificationItem(
-            icon: Icons.login,
-            title: 'New login detected on your account',
-            time: '5 minutes ago',
-            isUnread: true,
-          ),
-
-          const SizedBox(height: 16),
-
-          _buildNotificationItem(
-            icon: Icons.directions_car,
-            title: 'Vehicle "Clio" entered the safe zone',
-            time: '1 hour ago',
-            isUnread: false,
-          ),
-
-          if (_upcomingExpirations.isNotEmpty) ...[
-            const SizedBox(height: 16),
-            _buildNotificationItem(
-              icon: Icons.warning,
-              title: 'Document expiring soon',
-              time: 'Today',
-              isUnread: true,
-              isUrgent: true,
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNotificationItem({
-    required IconData icon,
-    required String title,
-    required String time,
-    bool isUnread = false,
-    bool isUrgent = false,
-  }) {
+  Widget _buildQuickMetrics() {
     return Row(
       children: [
-        Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            color: isUrgent
-                ? Colors.red[50]
-                : isUnread
-                ? Colors.blue[50]
-                : Colors.grey[50],
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Icon(
-            icon,
-            color: isUrgent
-                ? Colors.red[600]
-                : isUnread
-                ? Colors.blue[600]
-                : Colors.grey[600],
-            size: 20,
+        Expanded(
+          child: _buildMetricCard(
+            title: 'Véhicules',
+            value: '2',
+            subtitle: 'Actifs',
+            icon: Icons.directions_car_outlined,
+            color: _primaryColor,
           ),
         ),
         const SizedBox(width: 12),
         Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: _buildMetricCard(
+            title: 'Alertes',
+            value: '${_upcomingExpirations.length}',
+            subtitle: 'À traiter',
+            icon: Icons.warning_amber_outlined,
+            color: _upcomingExpirations.isEmpty ? _successColor : _warningColor,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _buildMetricCard(
+            title: 'Dernière',
+            value: '2j',
+            subtitle: 'Activité',
+            icon: Icons.schedule_outlined,
+            color: _textSecondary,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMetricCard({
+    required String title,
+    required String value,
+    required String subtitle,
+    required IconData icon,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: _cardColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _borderColor),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 2,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, color: color, size: 16),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+              color: _textPrimary,
+              letterSpacing: -0.5,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              color: _textSecondary,
+            ),
+          ),
+          Text(
+            subtitle,
+            style: TextStyle(
+              fontSize: 11,
+              color: _textTertiary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuickActions() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: _cardColor,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: _borderColor),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Actions rapides',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: _textPrimary,
+              letterSpacing: -0.3,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
             children: [
-              Text(
-                title,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: isUnread ? FontWeight.w600 : FontWeight.normal,
-                  color: Colors.black,
+              Expanded(
+                child: _buildActionButton(
+                  title: 'Ajouter véhicule',
+                  icon: Icons.add_circle_outline,
+                  onTap: () => _pageController.animateToPage(1,
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeInOut),
                 ),
               ),
-              const SizedBox(height: 2),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildActionButton(
+                  title: 'Scanner document',
+                  icon: Icons.document_scanner_outlined,
+                  onTap: () {},
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionButton({
+    required String title,
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: _surfaceColor,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: _borderColor),
+          ),
+          child: Column(
+            children: [
+              Icon(icon, color: _primaryColor, size: 24),
+              const SizedBox(height: 8),
               Text(
-                '$time • ${isUnread ? 'Unread' : 'Read'}',
+                title,
+                textAlign: TextAlign.center,
                 style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey[600],
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: _textPrimary,
                 ),
               ),
             ],
           ),
         ),
-        if (isUnread)
+      ),
+    );
+  }
+
+  Widget _buildPrioritySection() {
+    if (_upcomingExpirations.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: _cardColor,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: _borderColor),
+        ),
+        child: Column(
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: _successColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Icon(
+                Icons.check_circle_outline,
+                color: _successColor,
+                size: 24,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Tout est à jour',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: _textPrimary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Aucune action urgente requise',
+              style: TextStyle(
+                fontSize: 14,
+                color: _textSecondary,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: _cardColor,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: _errorColor.withOpacity(0.2)),
+        boxShadow: [
+          BoxShadow(
+            color: _errorColor.withOpacity(0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: _errorColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  Icons.priority_high,
+                  color: _errorColor,
+                  size: 18,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Attention requise',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: _textPrimary,
+                      ),
+                    ),
+                    Text(
+                      '${_upcomingExpirations.length} document(s) à renouveler',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: _textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: _errorColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  '${_upcomingExpirations.length}',
+                  style: TextStyle(
+                    color: _errorColor,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRecentActivity() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: _cardColor,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: _borderColor),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Activité récente',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: _textPrimary,
+                  letterSpacing: -0.3,
+                ),
+              ),
+              Text(
+                'Voir tout',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: _primaryColor,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          ..._buildActivityItems(),
+        ],
+      ),
+    );
+  }
+
+  List<Widget> _buildActivityItems() {
+    final activities = [
+      ActivityItem(
+        icon: Icons.login_outlined,
+        title: 'Connexion réussie',
+        subtitle: 'Il y a 5 minutes',
+        type: ActivityType.info,
+      ),
+      ActivityItem(
+        icon: Icons.directions_car_outlined,
+        title: 'Véhicule "Clio" ajouté',
+        subtitle: 'Il y a 2 heures',
+        type: ActivityType.success,
+      ),
+      if (_upcomingExpirations.isNotEmpty)
+        ActivityItem(
+          icon: Icons.warning_amber_outlined,
+          title: 'Document expire bientôt',
+          subtitle: 'Aujourd\'hui',
+          type: ActivityType.warning,
+        ),
+    ];
+
+    return activities.map((activity) => _buildActivityItem(activity)).toList();
+  }
+
+  Widget _buildActivityItem(ActivityItem activity) {
+    Color iconColor;
+    Color bgColor;
+
+    switch (activity.type) {
+      case ActivityType.success:
+        iconColor = _successColor;
+        bgColor = _successColor.withOpacity(0.1);
+        break;
+      case ActivityType.warning:
+        iconColor = _warningColor;
+        bgColor = _warningColor.withOpacity(0.1);
+        break;
+      case ActivityType.error:
+        iconColor = _errorColor;
+        bgColor = _errorColor.withOpacity(0.1);
+        break;
+      case ActivityType.info:
+      default:
+        iconColor = _primaryColor;
+        bgColor = _primaryColor.withOpacity(0.1);
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Row(
+        children: [
           Container(
-            width: 8,
-            height: 8,
+            width: 40,
+            height: 40,
             decoration: BoxDecoration(
-              color: isUrgent ? Colors.red : Colors.blue,
-              shape: BoxShape.circle,
+              color: bgColor,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(activity.icon, color: iconColor, size: 18),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  activity.title,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                    color: _textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  activity.subtitle,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: _textSecondary,
+                  ),
+                ),
+              ],
             ),
           ),
-      ],
+        ],
+      ),
     );
   }
 
   Widget _buildBottomNavigationBar() {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: _cardColor,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 8,
             offset: const Offset(0, -2),
           ),
         ],
       ),
-      child: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: (index) {
-          _pageController.animateToPage(
-            index,
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeInOut,
-          );
-        },
-        type: BottomNavigationBarType.fixed,
-        backgroundColor: Colors.white,
-        selectedItemColor: Colors.blue[600],
-        unselectedItemColor: Colors.grey[400],
-        elevation: 0,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home_outlined),
-            activeIcon: Icon(Icons.home),
-            label: 'Accueil',
+      child: SafeArea(
+        child: Container(
+          height: 72,
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _buildNavItem(0, Icons.home_outlined, Icons.home_rounded, 'Accueil'),
+              _buildNavItem(1, Icons.directions_car_outlined, Icons.directions_car_rounded, 'Véhicules'),
+              _buildNavItem(2, Icons.settings_outlined, Icons.settings_rounded, 'Paramètres'),
+            ],
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.directions_car_outlined),
-            activeIcon: Icon(Icons.directions_car),
-            label: 'Véhicules',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.settings_outlined),
-            activeIcon: Icon(Icons.settings),
-            label: 'Paramètres',
-          ),
-        ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNavItem(int index, IconData inactiveIcon, IconData activeIcon, String label) {
+    final isActive = _currentIndex == index;
+
+    return GestureDetector(
+      onTap: () {
+        _pageController.animateToPage(
+          index,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+        );
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: isActive ? _primaryColor.withOpacity(0.1) : Colors.transparent,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              isActive ? activeIcon : inactiveIcon,
+              color: isActive ? _primaryColor : _textTertiary,
+              size: 24,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: isActive ? _primaryColor : _textTertiary,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -502,14 +778,23 @@ class _HomeDashboardPageState extends State<HomeDashboardPage> {
     } else if (user?.email != null) {
       return user!.email![0].toUpperCase();
     }
-    return '?';
+    return 'U';
   }
 }
 
-// Classe pour les items d'attention
-class AttentionItem {
+// Classes utilitaires
+class ActivityItem {
+  final IconData icon;
   final String title;
-  final bool isCompleted;
+  final String subtitle;
+  final ActivityType type;
 
-  AttentionItem(this.title, this.isCompleted);
+  ActivityItem({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.type,
+  });
 }
+
+enum ActivityType { success, warning, error, info }

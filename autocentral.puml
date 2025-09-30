@@ -1,0 +1,948 @@
+@startuml
+set namespaceSeparator ::
+
+class "autocentral::core::constants.dart::AppConstants" {
+  {static} +String appName
+  {static} +String appVersion
+  {static} +String usersCollection
+  {static} +String carsCollection
+  {static} +String documentsCollection
+  {static} +String docTypeAssurance
+  {static} +String docTypeCarteGrise
+  {static} +String docTypeVisite
+  {static} +String docTypePermis
+  {static} +String docTypeVignette
+  {static} +String docTypeAutre
+  {static} +List<String> documentTypes
+  {static} +int warningThresholdDays
+  {static} +int criticalThresholdDays
+  {static} +int expiredThresholdDays
+  {static} +List<String> popularBrands
+  {static} +String storageUserPath
+  {static} +String storageVehiclesPath
+  {static} +String storageDocumentsPath
+  {static} +double defaultPadding
+  {static} +double smallPadding
+  {static} +double largePadding
+  {static} +double borderRadius
+  {static} +int maxFileSize
+  {static} +int maxVehiclesPerUser
+  {static} +int maxDocumentsPerVehicle
+  {static} +int maxImageQuality
+  {static} +String colorExpired
+  {static} +String colorCritical
+  {static} +String colorWarning
+  {static} +String colorOk
+  {static} +List<String> acceptedImageFormats
+  {static} +List<String> acceptedDocumentFormats
+  {static} +String notificationChannelId
+  {static} +String notificationChannelName
+  {static} +String notificationChannelDescription
+  {static} +bool defaultNotificationsEnabled
+  {static} +int defaultNotificationDays
+  {static} +bool defaultAutoBackup
+  {static} +String prefNotificationsEnabled
+  {static} +String prefNotificationDays
+  {static} +String prefAutoBackup
+  {static} +String prefDarkMode
+  {static} +String prefLanguage
+  {static} +String regexEmail
+  {static} +String regexLicensePlate
+  {static} +String regexPhoneNumber
+  {static} +String errorUserNotFound
+  {static} +String errorVehicleNotFound
+  {static} +String errorDocumentNotFound
+  {static} +String errorPermissionDenied
+  {static} +String errorNetworkError
+  {static} +String errorFileTooBig
+  {static} +String errorInvalidFormat
+  {static} +Map<String, String> errorMessages
+  {static} +String successVehicleAdded
+  {static} +String successVehicleUpdated
+  {static} +String successVehicleDeleted
+  {static} +String successDocumentAdded
+  {static} +String successDocumentDeleted
+  {static} +String loadingVehicles
+  {static} +String loadingDocuments
+  {static} +String uploadingDocument
+  {static} +String savingVehicle
+  {static} +String actionAdd
+  {static} +String actionEdit
+  {static} +String actionDelete
+  {static} +String actionCancel
+  {static} +String actionSave
+  {static} +String actionView
+  {static} +String actionShare
+  {static} +Map<String, dynamic> defaultStats
+}
+
+class "autocentral::core::models::document.dart::DocumentModel" {
+  +String id
+  +String type
+  +String name
+  +String fileUrl
+  +DateTime dateAdded
+  +DateTime? expiryDate
+  +Map<String, dynamic> toMap()
+}
+
+class "autocentral::core::models::user.dart::UserModel" {
+  +String id
+  +String email
+  +String? displayName
+  +String? photoUrl
+  +DateTime createdAt
+  +DateTime? updatedAt
+  +Map<String, dynamic>? preferences
+  +bool isEmailVerified
+  +String? phoneNumber
+  +int hashCode
+  +Map<String, dynamic> toMap()
+  +UserModel copyWith()
+  +String toString()
+  +bool ==()
+}
+
+class "autocentral::core::models::vehicle.dart::CarModel" {
+  +String id
+  +String brand
+  +String model
+  +String licensePlate
+  +int year
+  +int mileage
+  +DateTime purchaseDate
+  +DateTime insuranceExpiry
+  +DateTime inspectionExpiry
+  +String registrationNumber
+  +String? photoUrl
+  +bool hasExpiredDocuments
+  +bool hasUpcomingExpirations
+  +int daysUntilNextExpiration
+  +String nextExpiringDocumentType
+  +int hashCode
+  +Map<String, dynamic> toMap()
+  +CarModel copyWith()
+  +String toString()
+  +bool ==()
+}
+
+class "autocentral::core::services::api_service.dart::ApiService" {
+  {static} -String _vehicleDataApi
+  {static} -String _geoApi
+  {static} -Duration _timeout
+  {static} -String _openCageApiKey
+  {static} -Map<String, String> _defaultHeaders
+  {static} +dynamic getVehicleBrands()
+  {static} +dynamic getVehicleModels()
+  {static} +dynamic getVehicleYears()
+  {static} +dynamic getVehicleInfoByVin()
+  {static} +dynamic geocodeAddress()
+  {static} +dynamic reverseGeocode()
+  {static} +dynamic findNearbyGarages()
+  {static} +dynamic checkConnectivity()
+  {static} +dynamic sendAnalytics()
+  {static} -String _buildAddress()
+  {static} -List<String> _extractServices()
+  {static} -double _calculateDistance()
+  {static} -double _degToRad()
+}
+
+class "autocentral::core::services::api_service.dart::ApiResponse" {
+  +bool isSuccess
+  +T? data
+  +String? error
+}
+
+class "autocentral::core::services::api_service.dart::VehicleInfo" {
+  +String brand
+  +String model
+  +int year
+  +String? color
+  +String? engineType
+  +int? power
+  +bool isValid
+  +String toString()
+}
+
+class "autocentral::core::services::api_service.dart::LocationInfo" {
+  +double latitude
+  +double longitude
+  +String formattedAddress
+  +String toString()
+}
+
+class "autocentral::core::services::api_service.dart::Garage" {
+  +String id
+  +String name
+  +String address
+  +double latitude
+  +double longitude
+  +String? phone
+  +double? rating
+  +List<String> services
+  +double distanceKm
+  +String distanceText
+  +String toString()
+}
+
+class "autocentral::core::services::auth_service.dart::AuthService" {
+  {static} -FirebaseAuth _auth
+  {static} -FirebaseFirestore _firestore
+  {static} +Stream<User?> authStateChanges
+  {static} +User? currentUser
+  {static} +bool isLoggedIn
+  {static} +bool isEmailVerified
+  {static} +dynamic signUpWithEmail()
+  {static} +dynamic signInWithEmail()
+  {static} +dynamic signOut()
+  {static} +dynamic resetPassword()
+  {static} +dynamic deleteAccount()
+  {static} +dynamic sendEmailVerification()
+  {static} +dynamic reloadUser()
+  {static} +dynamic getUserProfile()
+  {static} -String? _cleanString()
+  {static} +dynamic updateUserProfile()
+  {static} -dynamic _createUserProfile()
+  {static} -String _handleAuthError()
+}
+
+"autocentral::core::services::auth_service.dart::AuthService" o-- "firebase_auth::firebase_auth.dart::FirebaseAuth"
+"autocentral::core::services::auth_service.dart::AuthService" o-- "cloud_firestore::cloud_firestore.dart::FirebaseFirestore"
+"autocentral::core::services::auth_service.dart::AuthService" o-- "dart::async::Stream<User>"
+"autocentral::core::services::auth_service.dart::AuthService" o-- "firebase_auth::firebase_auth.dart::User"
+
+class "autocentral::core::services::auth_service.dart::AuthResult" {
+  +bool isSuccess
+  +String? errorMessage
+}
+
+class "autocentral::core::services::document_service.dart::DocumentService" {
+  {static} -FirebaseFirestore _firestore
+  {static} -FirebaseStorage _storage
+  {static} +dynamic uploadDocument()
+  {static} +dynamic getDocuments()
+  {static} +dynamic deleteDocument()
+}
+
+"autocentral::core::services::document_service.dart::DocumentService" o-- "cloud_firestore::cloud_firestore.dart::FirebaseFirestore"
+"autocentral::core::services::document_service.dart::DocumentService" o-- "firebase_storage::firebase_storage.dart::FirebaseStorage"
+
+class "autocentral::core::services::firebase_background_fix.dart::FirebaseBackgroundService" {
+  {static} -StreamSubscription<User?>? _authSubscription
+  {static} -StreamSubscription<List<CarModel>>? _vehiclesSubscription
+  {static} -bool _isListening
+  {static} +dynamic startListening()
+  {static} +dynamic stopListening()
+  {static} -void _startVehicleListening()
+  {static} -void _stopVehicleListening()
+  {static} -void _reconnectAuth()
+  {static} -void _reconnectVehicles()
+  {static} -void _notifyVehiclesUpdated()
+  {static} +dynamic checkAndRepairConnection()
+  {static} -dynamic _repairConnection()
+  {static} +dynamic onAppResumed()
+  {static} +dynamic onAppPaused()
+  {static} +Map<String, dynamic> getStatus()
+}
+
+"autocentral::core::services::firebase_background_fix.dart::FirebaseBackgroundService" o-- "dart::async::StreamSubscription<User>"
+"autocentral::core::services::firebase_background_fix.dart::FirebaseBackgroundService" o-- "dart::async::StreamSubscription<List<CarModel>>"
+
+class "autocentral::core::services::sync_service.dart::SyncService" {
+  {static} -Connectivity _connectivity
+  {static} -StreamSubscription<ConnectivityResult>? _connectivitySubscription
+  {static} -Timer? _syncTimer
+  {static} -bool _isInitialized
+  {static} -bool _isSyncing
+  {static} +dynamic initialize()
+  {static} +dynamic dispose()
+  {static} +dynamic syncAll()
+  {static} -dynamic _syncVehicles()
+  {static} -dynamic _syncDocuments()
+  {static} -dynamic _saveVehiclesLocally()
+  {static} +dynamic getCachedVehicles()
+  {static} -dynamic _saveDocumentsLocally()
+  {static} +dynamic getCachedDocuments()
+  {static} +dynamic addPendingOperation()
+  {static} -dynamic _getPendingOperations()
+  {static} -dynamic _processPendingVehicleOperations()
+  {static} -dynamic _processPendingDocumentOperations()
+  {static} -dynamic _updateLastSyncTime()
+  {static} +dynamic getLastSyncTime()
+  {static} -dynamic _removePendingOperation()
+  {static} +dynamic clearCache()
+  {static} +dynamic getSyncStats()
+  {static} +dynamic forceSync()
+  {static} +dynamic needsSync()
+}
+
+"autocentral::core::services::sync_service.dart::SyncService" o-- "connectivity_plus::connectivity_plus.dart::Connectivity"
+"autocentral::core::services::sync_service.dart::SyncService" o-- "dart::async::StreamSubscription<ConnectivityResult>"
+"autocentral::core::services::sync_service.dart::SyncService" o-- "dart::async::Timer"
+
+class "autocentral::core::services::sync_service.dart::SyncResult" {
+  +bool isSuccess
+  +String? errorMessage
+  +SyncData? data
+}
+
+"autocentral::core::services::sync_service.dart::SyncResult" o-- "autocentral::core::services::sync_service.dart::SyncData"
+
+class "autocentral::core::services::sync_service.dart::SyncData" {
+  +int vehicleCount
+  +int documentCount
+  +DateTime syncTime
+}
+
+class "autocentral::core::services::sync_service.dart::SyncStats" {
+  +DateTime? lastSyncTime
+  +int pendingOperations
+  +int cachedVehicles
+  +bool isSyncing
+  +bool isInitialized
+  +String statusText
+  +bool needsSync
+}
+
+class "autocentral::core::services::vehicle_service.dart::VehicleService" {
+  {static} -FirebaseFirestore _firestore
+  {static} -FirebaseStorage _storage
+  {static} -CollectionReference<Object?>? _userVehiclesCollection
+  {static} +Stream<List<CarModel>> getUserVehicles()
+  {static} +dynamic getUserVehiclesList()
+  {static} +dynamic addVehicle()
+  {static} +dynamic updateVehicle()
+  {static} +dynamic deleteVehicle()
+  {static} +dynamic getVehicleById()
+  {static} +dynamic getVehiclesWithUpcomingExpirations()
+  {static} +dynamic getVehiclesWithExpiredDocuments()
+  {static} +dynamic searchVehicles()
+  {static} +dynamic getVehicleStats()
+  {static} -dynamic _uploadVehiclePhoto()
+  {static} -dynamic _deleteVehiclePhoto()
+  {static} -dynamic _deleteFileFromStorage()
+}
+
+"autocentral::core::services::vehicle_service.dart::VehicleService" o-- "cloud_firestore::cloud_firestore.dart::FirebaseFirestore"
+"autocentral::core::services::vehicle_service.dart::VehicleService" o-- "firebase_storage::firebase_storage.dart::FirebaseStorage"
+"autocentral::core::services::vehicle_service.dart::VehicleService" o-- "cloud_firestore::cloud_firestore.dart::CollectionReference<Object>"
+
+class "autocentral::core::services::vehicle_service.dart::VehicleResult" {
+  +bool isSuccess
+  +String? errorMessage
+  +String? data
+}
+
+class "autocentral::core::services::vehicle_service.dart::VehicleStats" {
+  +int totalVehicles
+  +int expiredDocuments
+  +int upcomingExpirations
+  +double averageMileage
+  +int oldestVehicleYear
+  +int newestVehicleYear
+}
+
+class "autocentral::core::utils::date_helper.dart::DateHelper" {
+  {static} -List<String> _monthNames
+  {static} +String toShortDateString()
+  {static} +String toLongDateString()
+  {static} +String toDateTimeString()
+  {static} +String toTimeString()
+  {static} +String toMonthYearString()
+  {static} +int daysBetween()
+  {static} +bool isExpired()
+  {static} +bool isExpiringSoon()
+  {static} +int daysUntilExpiry()
+  {static} +String formatDuration()
+  {static} +String getRelativeTime()
+  {static} +bool isSameDay()
+  {static} +DateTime startOfDay()
+  {static} +DateTime endOfDay()
+  {static} +DateTime addMonths()
+  {static} +DateTime addYears()
+  {static} +DateTime? parseShortDate()
+  {static} +ExpiryStatus getExpiryStatus()
+}
+
+class "autocentral::core::utils::date_helper.dart::ExpiryStatus" {
+  +int index
+  {static} +List<ExpiryStatus> values
+  {static} +ExpiryStatus expired
+  {static} +ExpiryStatus critical
+  {static} +ExpiryStatus warning
+  {static} +ExpiryStatus ok
+}
+
+"autocentral::core::utils::date_helper.dart::ExpiryStatus" o-- "autocentral::core::utils::date_helper.dart::ExpiryStatus"
+"dart::core::Enum" <|-- "autocentral::core::utils::date_helper.dart::ExpiryStatus"
+
+class "autocentral::core::utils::notifications_helper.dart::NotificationsHelper" {
+  {static} -FlutterLocalNotificationsPlugin _notifications
+  {static} -bool _initialized
+  {static} +dynamic initialize()
+  {static} +dynamic requestPermissions()
+  {static} +dynamic scheduleDocumentExpiryNotification()
+  {static} +dynamic scheduleInsuranceExpiryNotification()
+  {static} +dynamic scheduleInspectionExpiryNotification()
+  {static} +dynamic scheduleAllVehicleNotifications()
+  {static} +dynamic cancelVehicleNotifications()
+  {static} +dynamic cancelDocumentNotification()
+  {static} +dynamic showImmediateNotification()
+  {static} +dynamic getPendingNotifications()
+  {static} +dynamic cancelAllNotifications()
+  {static} -int _generateNotificationId()
+  {static} -void _onNotificationTapped()
+}
+
+"autocentral::core::utils::notifications_helper.dart::NotificationsHelper" o-- "flutter_local_notifications::src::flutter_local_notifications_plugin.dart::FlutterLocalNotificationsPlugin"
+
+class "autocentral::core::utils::notifications_helper.dart::ReminderScheduler" {
+  {static} +dynamic scheduleAllReminders()
+}
+
+class "autocentral::core::utils::notifications_helper.dart::NotificationConfig" {
+  +NotificationType type
+  +int daysBefore
+  +bool enabled
+  {static} +List<NotificationConfig> defaultConfigs
+}
+
+"autocentral::core::utils::notifications_helper.dart::NotificationConfig" o-- "autocentral::core::utils::notifications_helper.dart::NotificationType"
+
+class "autocentral::core::utils::notifications_helper.dart::NotificationType" {
+  +int index
+  {static} +List<NotificationType> values
+  {static} +NotificationType documentExpiry
+  {static} +NotificationType insuranceExpiry
+  {static} +NotificationType inspectionExpiry
+  {static} +NotificationType maintenanceReminder
+}
+
+"autocentral::core::utils::notifications_helper.dart::NotificationType" o-- "autocentral::core::utils::notifications_helper.dart::NotificationType"
+"dart::core::Enum" <|-- "autocentral::core::utils::notifications_helper.dart::NotificationType"
+
+class "autocentral::features::auth::auth_wrapper.dart::AuthWrapper" {
+  +Widget build()
+}
+
+"flutter::src::widgets::framework.dart::StatelessWidget" <|-- "autocentral::features::auth::auth_wrapper.dart::AuthWrapper"
+
+class "autocentral::features::auth::auth_wrapper.dart::AuthLoadingScreen" {
+  +Widget build()
+}
+
+"flutter::src::widgets::framework.dart::StatelessWidget" <|-- "autocentral::features::auth::auth_wrapper.dart::AuthLoadingScreen"
+
+class "autocentral::features::auth::login_page.dart::LoginPage" {
+  +State<LoginPage> createState()
+}
+
+"flutter::src::widgets::framework.dart::StatefulWidget" <|-- "autocentral::features::auth::login_page.dart::LoginPage"
+
+class "autocentral::features::auth::login_page.dart::_LoginPageState" {
+  -GlobalKey<FormState> _formKey
+  -TextEditingController _emailController
+  -TextEditingController _passwordController
+  -bool _isLoading
+  -bool _isPasswordVisible
+  -String? _errorMessage
+  +void dispose()
+  -dynamic _signIn()
+  -bool _validateUserDetails()
+  -dynamic _sendToPigeon()
+  -void _navigateToHome()
+  -String _getSimpleError()
+  +Widget build()
+}
+
+"autocentral::features::auth::login_page.dart::_LoginPageState" o-- "flutter::src::widgets::framework.dart::GlobalKey<FormState>"
+"autocentral::features::auth::login_page.dart::_LoginPageState" o-- "flutter::src::widgets::editable_text.dart::TextEditingController"
+"flutter::src::widgets::framework.dart::State" <|-- "autocentral::features::auth::login_page.dart::_LoginPageState"
+
+class "autocentral::features::auth::register_page.dart::RegisterPage" {
+  +State<RegisterPage> createState()
+}
+
+"flutter::src::widgets::framework.dart::StatefulWidget" <|-- "autocentral::features::auth::register_page.dart::RegisterPage"
+
+class "autocentral::features::auth::register_page.dart::_RegisterPageState" {
+  -GlobalKey<FormState> _formKey
+  -TextEditingController _firstNameController
+  -TextEditingController _lastNameController
+  -TextEditingController _emailController
+  -TextEditingController _passwordController
+  -TextEditingController _confirmPasswordController
+  -bool _isLoading
+  -bool _isPasswordVisible
+  -bool _isConfirmPasswordVisible
+  -bool _acceptTerms
+  -String? _errorMessage
+  +void dispose()
+  -dynamic _signUp()
+  +Widget build()
+}
+
+"autocentral::features::auth::register_page.dart::_RegisterPageState" o-- "flutter::src::widgets::framework.dart::GlobalKey<FormState>"
+"autocentral::features::auth::register_page.dart::_RegisterPageState" o-- "flutter::src::widgets::editable_text.dart::TextEditingController"
+"flutter::src::widgets::framework.dart::State" <|-- "autocentral::features::auth::register_page.dart::_RegisterPageState"
+
+class "autocentral::features::auth::reset_password_page.dart::ResetPasswordPage" {
+  +State<ResetPasswordPage> createState()
+}
+
+"flutter::src::widgets::framework.dart::StatefulWidget" <|-- "autocentral::features::auth::reset_password_page.dart::ResetPasswordPage"
+
+class "autocentral::features::auth::reset_password_page.dart::_ResetPasswordPageState" {
+  -GlobalKey<FormState> _formKey
+  -TextEditingController _emailController
+  -bool _isLoading
+  -bool _emailSent
+  -String? _errorMessage
+  +void dispose()
+  -dynamic _resetPassword()
+  +Widget build()
+  -Widget _buildForm()
+  -Widget _buildSuccessView()
+}
+
+"autocentral::features::auth::reset_password_page.dart::_ResetPasswordPageState" o-- "flutter::src::widgets::framework.dart::GlobalKey<FormState>"
+"autocentral::features::auth::reset_password_page.dart::_ResetPasswordPageState" o-- "flutter::src::widgets::editable_text.dart::TextEditingController"
+"flutter::src::widgets::framework.dart::State" <|-- "autocentral::features::auth::reset_password_page.dart::_ResetPasswordPageState"
+
+class "autocentral::features::dashboard::dashboard_page.dart::HomeDashboardPage" {
+  +State<HomeDashboardPage> createState()
+}
+
+"flutter::src::widgets::framework.dart::StatefulWidget" <|-- "autocentral::features::dashboard::dashboard_page.dart::HomeDashboardPage"
+
+class "autocentral::features::dashboard::dashboard_page.dart::_HomeDashboardPageState" {
+  -PageController _pageController
+  -AnimationController _fadeController
+  -Animation<double> _fadeAnimation
+  -int _currentIndex
+  -List<CarModel> _upcomingExpirations
+  {static} -Color _primaryColor
+  {static} -Color _surfaceColor
+  {static} -Color _cardColor
+  {static} -Color _textPrimary
+  {static} -Color _textSecondary
+  {static} -Color _textTertiary
+  {static} -Color _successColor
+  {static} -Color _warningColor
+  {static} -Color _errorColor
+  {static} -Color _borderColor
+  +void initState()
+  +void dispose()
+  -dynamic _loadUpcomingExpirations()
+  +Widget build()
+  -Widget _buildHomePage()
+  -Widget _buildQuickMetrics()
+  -Widget _buildMetricCard()
+  -Widget _buildQuickActions()
+  -Widget _buildActionButton()
+  -Widget _buildPrioritySection()
+  -Widget _buildRecentActivity()
+  -List<Widget> _buildActivityItems()
+  -Widget _buildActivityItem()
+  -Widget _buildBottomNavigationBar()
+  -Widget _buildNavItem()
+  -String _getInitials()
+}
+
+"autocentral::features::dashboard::dashboard_page.dart::_HomeDashboardPageState" o-- "flutter::src::widgets::page_view.dart::PageController"
+"autocentral::features::dashboard::dashboard_page.dart::_HomeDashboardPageState" o-- "flutter::src::animation::animation_controller.dart::AnimationController"
+"autocentral::features::dashboard::dashboard_page.dart::_HomeDashboardPageState" o-- "flutter::src::animation::animation.dart::Animation<double>"
+"autocentral::features::dashboard::dashboard_page.dart::_HomeDashboardPageState" o-- "dart::ui::Color"
+"flutter::src::widgets::framework.dart::State" <|-- "autocentral::features::dashboard::dashboard_page.dart::_HomeDashboardPageState"
+"flutter::src::widgets::ticker_provider.dart::TickerProviderStateMixin" <|-- "autocentral::features::dashboard::dashboard_page.dart::_HomeDashboardPageState"
+
+class "autocentral::features::dashboard::dashboard_page.dart::ActivityItem" {
+  +IconData icon
+  +String title
+  +String subtitle
+  +ActivityType type
+}
+
+"autocentral::features::dashboard::dashboard_page.dart::ActivityItem" o-- "flutter::src::widgets::icon_data.dart::IconData"
+"autocentral::features::dashboard::dashboard_page.dart::ActivityItem" o-- "autocentral::features::dashboard::dashboard_page.dart::ActivityType"
+
+class "autocentral::features::dashboard::dashboard_page.dart::ActivityType" {
+  +int index
+  {static} +List<ActivityType> values
+  {static} +ActivityType success
+  {static} +ActivityType warning
+  {static} +ActivityType error
+  {static} +ActivityType info
+}
+
+"autocentral::features::dashboard::dashboard_page.dart::ActivityType" o-- "autocentral::features::dashboard::dashboard_page.dart::ActivityType"
+"dart::core::Enum" <|-- "autocentral::features::dashboard::dashboard_page.dart::ActivityType"
+
+class "autocentral::features::documents::document_form_page.dart::DocumentFormPage" {
+  +String vehicleId
+  +String? initialDocType
+  +State<DocumentFormPage> createState()
+}
+
+"flutter::src::widgets::framework.dart::StatefulWidget" <|-- "autocentral::features::documents::document_form_page.dart::DocumentFormPage"
+
+class "autocentral::features::documents::document_form_page.dart::_DocumentFormPageState" {
+  -GlobalKey<FormState> _formKey
+  -String? _docType
+  -String? _fileName
+  -Uint8List? _fileBytes
+  -DateTime? _expiryDate
+  -bool _hasExpiry
+  -bool _isLoading
+  -Map<String, String> _documentTypes
+  -Set<String> _typesWithExpiry
+  +void initState()
+  +Widget build()
+  -Widget _buildSectionCard()
+  -Widget _buildFileSelector()
+  -Widget _buildSelectedFile()
+  -dynamic _selectFile()
+  -dynamic _selectExpiryDate()
+  -dynamic _saveDocument()
+  -IconData _getDocumentIcon()
+  -String _formatDate()
+  -String _getExpiryWarning()
+  -Color _getExpiryWarningColor()
+}
+
+"autocentral::features::documents::document_form_page.dart::_DocumentFormPageState" o-- "flutter::src::widgets::framework.dart::GlobalKey<FormState>"
+"autocentral::features::documents::document_form_page.dart::_DocumentFormPageState" o-- "dart::typed_data::Uint8List"
+"flutter::src::widgets::framework.dart::State" <|-- "autocentral::features::documents::document_form_page.dart::_DocumentFormPageState"
+
+class "autocentral::features::documents::document_list_page.dart::DocumentListPage" {
+  +String vehicleId
+  +State<DocumentListPage> createState()
+}
+
+"flutter::src::widgets::framework.dart::StatefulWidget" <|-- "autocentral::features::documents::document_list_page.dart::DocumentListPage"
+
+class "autocentral::features::documents::document_list_page.dart::_DocumentListPageState" {
+  -List<DocumentModel> _documents
+  -bool _isLoading
+  +void initState()
+  -dynamic _loadDocuments()
+  +Widget build()
+  -Widget _buildEmptyState()
+  -Widget _buildDocumentsList()
+  -Widget _buildDocumentTypeCard()
+  -Widget _buildExpiryInfo()
+  -bool _isVisiteTechniqueUrgent()
+  -String _getDocumentTypeLabel()
+  -void _showDocumentDetails()
+  -Widget _buildDocumentTile()
+  -Color _getExpiryColor()
+  -void _downloadDocument()
+  -void _shareDocument()
+  -dynamic _deleteDocument()
+}
+
+"flutter::src::widgets::framework.dart::State" <|-- "autocentral::features::documents::document_list_page.dart::_DocumentListPageState"
+
+class "autocentral::features::settings::profile_page.dart::ProfilePage" {
+  +State<ProfilePage> createState()
+}
+
+"flutter::src::widgets::framework.dart::StatefulWidget" <|-- "autocentral::features::settings::profile_page.dart::ProfilePage"
+
+class "autocentral::features::settings::profile_page.dart::_ProfilePageState" {
+  -GlobalKey<FormState> _formKey
+  -TextEditingController _firstNameController
+  -TextEditingController _lastNameController
+  -bool _isLoading
+  -bool _isEditing
+  -Map<String, dynamic>? _userProfile
+  -User? _currentUser
+  +void initState()
+  +void dispose()
+  -dynamic _loadUserProfile()
+  -dynamic _updateProfile()
+  -dynamic _signOut()
+  -dynamic _deleteAccount()
+  +Widget build()
+  -String _getInitials()
+  -String _getFullName()
+  -String _formatDate()
+  -dynamic _sendEmailVerification()
+  -dynamic _resetPassword()
+}
+
+"autocentral::features::settings::profile_page.dart::_ProfilePageState" o-- "flutter::src::widgets::framework.dart::GlobalKey<FormState>"
+"autocentral::features::settings::profile_page.dart::_ProfilePageState" o-- "flutter::src::widgets::editable_text.dart::TextEditingController"
+"autocentral::features::settings::profile_page.dart::_ProfilePageState" o-- "firebase_auth::firebase_auth.dart::User"
+"flutter::src::widgets::framework.dart::State" <|-- "autocentral::features::settings::profile_page.dart::_ProfilePageState"
+
+class "autocentral::features::vehicles::vehicle_detail_page.dart::VehicleDetailPage" {
+  +String vehicleId
+  +State<VehicleDetailPage> createState()
+}
+
+"flutter::src::widgets::framework.dart::StatefulWidget" <|-- "autocentral::features::vehicles::vehicle_detail_page.dart::VehicleDetailPage"
+
+class "autocentral::features::vehicles::vehicle_detail_page.dart::_VehicleDetailPageState" {
+  -CarModel? _vehicle
+  -bool _isLoading
+  +void initState()
+  -dynamic _loadVehicle()
+  +Widget build()
+  -Widget _buildVehicleHeader()
+  -Widget _buildStatusCard()
+  -Widget _buildDocumentStatus()
+  -Widget _buildContactCard()
+  -Widget _buildMainMenu()
+  -Widget _buildMenuItem()
+  -Widget _buildDivider()
+  -Widget _buildQuickActions()
+  -String _formatMileage()
+}
+
+"autocentral::features::vehicles::vehicle_detail_page.dart::_VehicleDetailPageState" o-- "autocentral::core::models::vehicle.dart::CarModel"
+"flutter::src::widgets::framework.dart::State" <|-- "autocentral::features::vehicles::vehicle_detail_page.dart::_VehicleDetailPageState"
+
+class "autocentral::features::vehicles::vehicle_form_page.dart::VehicleFormPage" {
+  +CarModel? vehicle
+  +State<VehicleFormPage> createState()
+}
+
+"autocentral::features::vehicles::vehicle_form_page.dart::VehicleFormPage" o-- "autocentral::core::models::vehicle.dart::CarModel"
+"flutter::src::widgets::framework.dart::StatefulWidget" <|-- "autocentral::features::vehicles::vehicle_form_page.dart::VehicleFormPage"
+
+class "autocentral::features::vehicles::vehicle_form_page.dart::_VehicleFormPageState" {
+  -GlobalKey<FormState> _formKey
+  -TextEditingController _brandController
+  -TextEditingController _modelController
+  -TextEditingController _licenseController
+  -TextEditingController _registrationController
+  -TextEditingController _yearController
+  -TextEditingController _mileageController
+  -DateTime? _purchaseDate
+  -DateTime? _insuranceExpiry
+  -DateTime? _inspectionExpiry
+  -Uint8List? _selectedImageData
+  -String? _selectedImageName
+  -String? _existingPhotoUrl
+  -bool _isLoading
+  -bool _isEditing
+  -List<String> _popularBrands
+  +void initState()
+  -void _populateFormWithVehicleData()
+  +void dispose()
+  +Widget build()
+  -Widget _buildPhotoSection()
+  -Widget _buildPlaceholder()
+  -Widget _buildSectionCard()
+  -Widget _buildBrandField()
+  -Widget _buildDateField()
+  -Widget _buildActionButtons()
+  -dynamic _selectImage()
+  -void _removeImage()
+  -dynamic _selectDate()
+  -dynamic _saveVehicle()
+  -dynamic _deleteVehicle()
+  -String _formatDate()
+}
+
+"autocentral::features::vehicles::vehicle_form_page.dart::_VehicleFormPageState" o-- "flutter::src::widgets::framework.dart::GlobalKey<FormState>"
+"autocentral::features::vehicles::vehicle_form_page.dart::_VehicleFormPageState" o-- "flutter::src::widgets::editable_text.dart::TextEditingController"
+"autocentral::features::vehicles::vehicle_form_page.dart::_VehicleFormPageState" o-- "dart::typed_data::Uint8List"
+"flutter::src::widgets::framework.dart::State" <|-- "autocentral::features::vehicles::vehicle_form_page.dart::_VehicleFormPageState"
+
+class "autocentral::features::vehicles::vehicle_list_page.dart::VehicleListPage" {
+  +State<VehicleListPage> createState()
+}
+
+"flutter::src::widgets::framework.dart::StatefulWidget" <|-- "autocentral::features::vehicles::vehicle_list_page.dart::VehicleListPage"
+
+class "autocentral::features::vehicles::vehicle_list_page.dart::_VehicleListPageState" {
+  -TextEditingController _searchController
+  -List<CarModel> _allVehicles
+  -List<CarModel> _filteredVehicles
+  -VehicleStats? _stats
+  +void initState()
+  +void dispose()
+  -dynamic _loadStats()
+  -void _onSearchChanged()
+  +Widget build()
+  -Widget _buildStatItem()
+  -Widget _buildErrorState()
+  -Widget _buildEmptyState()
+  -dynamic _deleteVehicle()
+}
+
+"autocentral::features::vehicles::vehicle_list_page.dart::_VehicleListPageState" o-- "flutter::src::widgets::editable_text.dart::TextEditingController"
+"autocentral::features::vehicles::vehicle_list_page.dart::_VehicleListPageState" o-- "autocentral::core::services::vehicle_service.dart::VehicleStats"
+"flutter::src::widgets::framework.dart::State" <|-- "autocentral::features::vehicles::vehicle_list_page.dart::_VehicleListPageState"
+
+class "autocentral::firebase_options.dart::DefaultFirebaseOptions" {
+  {static} +FirebaseOptions web
+  {static} +FirebaseOptions android
+  {static} +FirebaseOptions ios
+  {static} +FirebaseOptions macos
+  {static} +FirebaseOptions windows
+  {static} +FirebaseOptions currentPlatform
+}
+
+"autocentral::firebase_options.dart::DefaultFirebaseOptions" o-- "firebase_core_platform_interface::firebase_core_platform_interface.dart::FirebaseOptions"
+
+class "autocentral::main.dart::MyApp" {
+  +_MyAppState createState()
+}
+
+"flutter::src::widgets::framework.dart::StatefulWidget" <|-- "autocentral::main.dart::MyApp"
+
+class "autocentral::main.dart::_MyAppState" {
+  +void initState()
+  +void dispose()
+  -void _checkAuthState()
+  -dynamic _validateCurrentUser()
+  -dynamic _cleanupServices()
+  +void didChangeAppLifecycleState()
+  -dynamic _handleAppResume()
+  -dynamic _handleAppPause()
+  -dynamic _handleAppDetached()
+  +Widget build()
+}
+
+"flutter::src::widgets::framework.dart::State" <|-- "autocentral::main.dart::_MyAppState"
+"flutter::src::widgets::binding.dart::WidgetsBindingObserver" <|-- "autocentral::main.dart::_MyAppState"
+
+class "autocentral::main.dart::DebugPage" {
+  +State<DebugPage> createState()
+}
+
+"flutter::src::widgets::framework.dart::StatefulWidget" <|-- "autocentral::main.dart::DebugPage"
+
+class "autocentral::main.dart::_DebugPageState" {
+  -Map<String, dynamic> _firebaseStatus
+  -bool _isLoading
+  +void initState()
+  -dynamic _loadFirebaseStatus()
+  +Widget build()
+  -Widget _buildStatusCard()
+  -dynamic _testFirebaseConnection()
+  -dynamic _testUserProfile()
+  -void _showSnackBar()
+}
+
+"flutter::src::widgets::framework.dart::State" <|-- "autocentral::main.dart::_DebugPageState"
+
+class "autocentral::pigeon_definitions::user_api.dart::UserDetails" {
+  +String? uid
+  +String? email
+  +String? displayName
+  +String? photoUrl
+}
+
+abstract class "autocentral::pigeon_definitions::user_api.dart::UserHostApi" {
+  +UserDetails getProfile()
+  +void setCurrentUser()
+  +void clearCurrentUser()
+}
+
+class "autocentral::pigeon_definitions::user_api.g.dart::UserDetails" {
+  +String? uid
+  +String? email
+  +String? displayName
+  +String? photoUrl
+  +int hashCode
+  -List<Object?> _toList()
+  +Object encode()
+  {static} +UserDetails decode()
+  +bool ==()
+}
+
+class "autocentral::pigeon_definitions::user_api.g.dart::_PigeonCodec" {
+  +void writeValue()
+  +Object? readValueOfType()
+}
+
+"flutter::src::services::message_codecs.dart::StandardMessageCodec" <|-- "autocentral::pigeon_definitions::user_api.g.dart::_PigeonCodec"
+
+class "autocentral::pigeon_definitions::user_api.g.dart::UserHostApi" {
+  +BinaryMessenger? pigeonVar_binaryMessenger
+  {static} +MessageCodec<Object?> pigeonChannelCodec
+  +String pigeonVar_messageChannelSuffix
+  +dynamic getProfile()
+  +dynamic setCurrentUser()
+  +dynamic clearCurrentUser()
+}
+
+"autocentral::pigeon_definitions::user_api.g.dart::UserHostApi" o-- "flutter::src::services::binary_messenger.dart::BinaryMessenger"
+"autocentral::pigeon_definitions::user_api.g.dart::UserHostApi" o-- "flutter::src::services::message_codec.dart::MessageCodec<Object>"
+
+class "autocentral::pigeon_definitions::user_api_test.g.dart::_PigeonCodec" {
+  +void writeValue()
+  +Object? readValueOfType()
+}
+
+"flutter::src::services::message_codecs.dart::StandardMessageCodec" <|-- "autocentral::pigeon_definitions::user_api_test.g.dart::_PigeonCodec"
+
+class "autocentral::routes::app_routes.dart::AppRoutes" {
+  {static} +Map<String, Widget Function(BuildContext)> routes
+  {static} +Route<dynamic> generateRoute()
+}
+
+class "autocentral::widgets::document_card.dart::DocumentCard" {
+  +DocumentModel document
+  +void Function()? onDownload
+  +Widget build()
+}
+
+"autocentral::widgets::document_card.dart::DocumentCard" o-- "autocentral::core::models::document.dart::DocumentModel"
+"autocentral::widgets::document_card.dart::DocumentCard" o-- "dart::ui::void Function()"
+"flutter::src::widgets::framework.dart::StatelessWidget" <|-- "autocentral::widgets::document_card.dart::DocumentCard"
+
+class "autocentral::widgets::modern_date_picker.dart::ModernDatePicker" {
+  +DateTime? initialDate
+  +DateTime? firstDate
+  +DateTime? lastDate
+  +dynamic Function(DateTime) onDateSelected
+  +String title
+  +State<ModernDatePicker> createState()
+}
+
+"autocentral::widgets::modern_date_picker.dart::ModernDatePicker" o-- "null::dynamic Function(DateTime)"
+"flutter::src::widgets::framework.dart::StatefulWidget" <|-- "autocentral::widgets::modern_date_picker.dart::ModernDatePicker"
+
+class "autocentral::widgets::modern_date_picker.dart::_ModernDatePickerState" {
+  -DateTime _currentDate
+  -DateTime _selectedDate
+  -PageController _pageController
+  +void initState()
+  +void dispose()
+  +Widget build()
+  -Widget _buildCalendar()
+  -Widget _buildCalendarGrid()
+  -Widget _buildDayCell()
+  -bool _isSameDay()
+  -bool _isSelectableDate()
+  -void _selectDate()
+  -void _previousMonth()
+  -void _nextMonth()
+  -String _formatMonthYear()
+}
+
+"autocentral::widgets::modern_date_picker.dart::_ModernDatePickerState" o-- "flutter::src::widgets::page_view.dart::PageController"
+"flutter::src::widgets::framework.dart::State" <|-- "autocentral::widgets::modern_date_picker.dart::_ModernDatePickerState"
+
+class "autocentral::widgets::vehicle_card.dart::VehicleCard" {
+  +CarModel car
+  +void Function()? onTap
+  +void Function()? onEdit
+  +void Function()? onDelete
+  +Widget build()
+  -Widget _buildCarIcon()
+  -Widget _buildExpiryInfo()
+  -String _formatMileage()
+}
+
+"autocentral::widgets::vehicle_card.dart::VehicleCard" o-- "autocentral::core::models::vehicle.dart::CarModel"
+"autocentral::widgets::vehicle_card.dart::VehicleCard" o-- "dart::ui::void Function()"
+"flutter::src::widgets::framework.dart::StatelessWidget" <|-- "autocentral::widgets::vehicle_card.dart::VehicleCard"
+
+
+@enduml

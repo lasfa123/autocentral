@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:autocentral/pigeon_definitions/user_api.g.dart'; // ton fichier Pigeon généré
 
 class UserModel {
   final String id;
@@ -89,4 +90,17 @@ class UserModel {
 
   @override
   int get hashCode => id.hashCode ^ email.hashCode;
+}
+
+UserModel userDetailsToUserModel(UserDetails details) {
+  return UserModel(
+    id: details.uid ?? '',           // éviter null
+    email: details.email ?? '',      // éviter null
+    displayName: details.displayName,
+    photoUrl: details.photoUrl,
+    createdAt: DateTime.now(),
+    updatedAt: null,
+    isEmailVerified: false,
+    preferences: {},
+  );
 }

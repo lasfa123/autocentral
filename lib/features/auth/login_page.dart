@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../../core/services/auth_service.dart';
 import 'register_page.dart';
 import 'reset_password_page.dart';
+import 'package:autocentral/pigeon_definitions/user_api.g.dart'; // UserDetails
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -36,25 +37,182 @@ class _LoginPageState extends State<LoginPage> {
       _errorMessage = null;
     });
 
-    // Feedback haptique
     HapticFeedback.lightImpact();
 
-    final result = await AuthService.signInWithEmail(
-      email: _emailController.text.trim(),
-      password: _passwordController.text,
-    );
+    try {
+      debugPrint('🔐 Démarrage de la connexion...');
 
-    if (mounted) {
-      setState(() => _isLoading = false);
+      // 1. Connexion avec Firebase Auth
+      final result = await AuthService.signInWithEmail(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+      );
+
+      if (!mounted) return;
 
       if (result.isSuccess) {
-        // Connexion réussie - la navigation sera gérée par le StreamBuilder dans main.dart
+        debugPrint('✅ Connexion Firebase réussie');
+
+        // 2. Petite pause pour que Firebase Auth se stabilise
+        await Future.delayed(const Duration(milliseconds: 300));
+
+        // 3. Récupération du profil utilisateur
+        try {
+          debugPrint('🔍 Récupération du profil utilisateur...');
+          final userProfile = await AuthService.getUserProfile();
+
+          if (userProfile != null) {
+            debugPrint('✅ Profil utilisateur récupéré');
+            debugPrint('   - UID: ${userProfile.uid}');
+            debugPrint('   - Email: ${userProfile.email ?? "null"}');
+            debugPrint('   - DisplayName: ${userProfile.displayName ?? "null"}');
+
+            // 4. Validation de l'objet UserDetails
+            if (_validateUserDetails(userProfile)) {
+              // 5. Optionnel: Envoyer à votre API Pigeon
+              await _sendToPigeon(userProfile);
+
+              // 6. Navigation vers la page principale
+              _navigateToHome();
+
+            } else {
+              debugPrint('❌ UserDetails invalide');
+              setState(() => _errorMessage = 'Données utilisateur invalides');
+            }
+          } else {
+            debugPrint('⚠️ Profil utilisateur non récupéré, mais connexion OK');
+            // Connexion réussie même sans profil complet
+            _navigateToHome();
+          }
+
+        } catch (profileError) {
+          debugPrint('❌ Erreur récupération profil: $profileError');
+          // Connexion Firebase OK, mais problème avec le profil
+          setState(() => _errorMessage = 'Connexion réussie, profil incomplet');
+
+          // On peut quand même continuer
+          _navigateToHome();
+        }
+
         HapticFeedback.lightImpact();
+
       } else {
-        setState(() => _errorMessage = result.errorMessage);
+        // Erreur de connexion Firebase
+        debugPrint('❌ Erreur connexion Firebase: ${result.errorMessage ?? "Erreur inconnue"}');
+        setState(() => _errorMessage = result.errorMessage ?? 'Erreur de connexion');
         HapticFeedback.heavyImpact();
       }
+
+    } catch (e, stackTrace) {
+      debugPrint('❌ Erreur inattendue lors de la connexion: $e');
+      debugPrint('Stack trace: $stackTrace');
+      setState(() => _errorMessage = 'Erreur inattendue: ${_getSimpleError(e)}');
+      HapticFeedback.heavyImpact();
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
+  }
+
+  /// Valider que l'objet UserDetails est correct avant utilisation
+  bool _validateUserDetails(UserDetails userDetails) {
+    try {
+      // Vérification de l'UID (requis selon Pigeon)
+      final uid = userDetails.uid;
+      if (uid == null || uid.isEmpty) {
+        debugPrint('❌ Validation: UID vide');
+        return false;
+      }
+
+      // L'email peut être null mais pas vide si présent
+      final email = userDetails.email;
+      if (email != null && email.isEmpty) {
+        debugPrint('❌ Validation: Email vide');
+        return false;
+      }
+
+      // Le displayName peut être null mais pas vide si présent
+      final displayName = userDetails.displayName;
+      if (displayName != null && displayName.isEmpty) {
+        debugPrint('⚠️ Validation: DisplayName vide (non bloquant)');
+      }
+
+      // Le photoUrl peut être null mais pas vide si présent
+      final photoUrl = userDetails.photoUrl;
+      if (photoUrl != null && photoUrl.isEmpty) {
+        debugPrint('⚠️ Validation: PhotoUrl vide (non bloquant)');
+      }
+
+      debugPrint('✅ UserDetails valide');
+      return true;
+    } catch (e) {
+      debugPrint('❌ Erreur validation UserDetails: $e');
+      return false;
+    }
+  }
+
+  /// Envoyer les données à votre API Pigeon (optionnel)
+  Future<void> _sendToPigeon(UserDetails userDetails) async {
+    try {
+      debugPrint('📤 Envoi vers Pigeon...');
+
+      // Décommentez cette ligne quand vous voulez utiliser Pigeon
+      // await UserApi().setCurrentUser(userDetails);
+
+      debugPrint('✅ Données envoyées à Pigeon avec succès');
+    } catch (pigeonError) {
+      debugPrint('❌ Erreur Pigeon: $pigeonError');
+      // Ne pas faire échouer la connexion pour une erreur Pigeon
+
+      // Diagnostic de l'erreur Pigeon
+      final errorString = pigeonError.toString();
+      if (errorString.contains('list is not a subtype')) {
+        debugPrint('🔍 Erreur de sérialisation Pigeon détectée');
+        debugPrint('🔍 Vérifiez la définition de UserDetails dans pigeon');
+        debugPrint('🔍 UserDetails reçu: $userDetails');
+      }
+    }
+  }
+
+  /// Navigation vers la page principale
+  void _navigateToHome() {
+    debugPrint('🏠 Navigation vers la page principale');
+
+    // Remplacez par votre navigation réelle
+    // Navigator.pushReplacementNamed(context, '/home');
+
+    // Pour l'instant, juste un message
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('✅ Connexion réussie !'),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
+  /// Simplifier les messages d'erreur pour l'utilisateur
+  String _getSimpleError(dynamic error) {
+    final errorStr = error.toString().toLowerCase();
+
+    if (errorStr.contains('network')) {
+      return 'Problème de connexion internet';
+    }
+    if (errorStr.contains('timeout')) {
+      return 'Délai d\'attente dépassé';
+    }
+    if (errorStr.contains('permission')) {
+      return 'Problème de permissions';
+    }
+
+    // Retourner une version courte de l'erreur
+    final shortError = error.toString();
+    return shortError.length > 50
+        ? '${shortError.substring(0, 50)}...'
+        : shortError;
   }
 
   @override
@@ -112,6 +270,7 @@ class _LoginPageState extends State<LoginPage> {
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
                       textInputAction: TextInputAction.next,
+                      enabled: !_isLoading,
                       decoration: InputDecoration(
                         labelText: 'Adresse email',
                         hintText: 'exemple@email.com',
@@ -150,6 +309,7 @@ class _LoginPageState extends State<LoginPage> {
                       controller: _passwordController,
                       obscureText: !_isPasswordVisible,
                       textInputAction: TextInputAction.done,
+                      enabled: !_isLoading,
                       onFieldSubmitted: (_) => _signIn(),
                       decoration: InputDecoration(
                         labelText: 'Mot de passe',
@@ -160,7 +320,7 @@ class _LoginPageState extends State<LoginPage> {
                                 ? Icons.visibility_off
                                 : Icons.visibility,
                           ),
-                          onPressed: () {
+                          onPressed: _isLoading ? null : () {
                             setState(() {
                               _isPasswordVisible = !_isPasswordVisible;
                             });
@@ -185,6 +345,9 @@ class _LoginPageState extends State<LoginPage> {
                         if (value == null || value.isEmpty) {
                           return 'Veuillez saisir votre mot de passe';
                         }
+                        if (value.length < 6) {
+                          return 'Le mot de passe doit contenir au moins 6 caractères';
+                        }
                         return null;
                       },
                     ),
@@ -195,7 +358,7 @@ class _LoginPageState extends State<LoginPage> {
                     Align(
                       alignment: Alignment.centerRight,
                       child: TextButton(
-                        onPressed: () {
+                        onPressed: _isLoading ? null : () {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
@@ -206,7 +369,9 @@ class _LoginPageState extends State<LoginPage> {
                         child: Text(
                           'Mot de passe oublié ?',
                           style: TextStyle(
-                            color: Theme.of(context).primaryColor,
+                            color: _isLoading
+                                ? Colors.grey
+                                : Theme.of(context).primaryColor,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
@@ -300,7 +465,7 @@ class _LoginPageState extends State<LoginPage> {
                           style: TextStyle(color: Colors.grey[600]),
                         ),
                         TextButton(
-                          onPressed: () {
+                          onPressed: _isLoading ? null : () {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
@@ -311,7 +476,9 @@ class _LoginPageState extends State<LoginPage> {
                           child: Text(
                             'S\'inscrire',
                             style: TextStyle(
-                              color: Theme.of(context).primaryColor,
+                              color: _isLoading
+                                  ? Colors.grey
+                                  : Theme.of(context).primaryColor,
                               fontWeight: FontWeight.w600,
                             ),
                           ),

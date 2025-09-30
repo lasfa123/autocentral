@@ -86,7 +86,7 @@ class _DocumentFormPageState extends State<DocumentFormPage> {
                     title: 'Type de document',
                     icon: Icons.category_outlined,
                     child: DropdownButtonFormField<String>(
-                      value: _docType,
+                      initialValue: _docType,
                       decoration: const InputDecoration(
                         hintText: 'Sélectionnez un type',
                         border: OutlineInputBorder(),

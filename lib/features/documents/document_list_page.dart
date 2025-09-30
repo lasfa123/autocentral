@@ -633,6 +633,6 @@ class _DocumentListPageState extends State<DocumentListPage> {
 // Extension pour formater les dates
 extension DateHelpers on DateTime {
   String toShortDateString() {
-    return "${day.toString().padLeft(2,'0')}/${month.toString().padLeft(2,'0')}/${year}";
+    return "${day.toString().padLeft(2,'0')}/${month.toString().padLeft(2,'0')}/$year";
   }
 }
