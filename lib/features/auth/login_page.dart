@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../core/services/auth_service.dart';
+import '../dashboard/dashboard_page.dart';
 import 'register_page.dart';
 import 'reset_password_page.dart';
 import 'package:autocentral/pigeon_definitions/user_api.g.dart'; // UserDetails
@@ -177,21 +178,28 @@ class _LoginPageState extends State<LoginPage> {
 
   /// Navigation vers la page principale
   void _navigateToHome() {
-    debugPrint('🏠 Navigation vers la page principale');
+    debugPrint('🏠 Navigation vers le tableau de bord');
 
-    // Remplacez par votre navigation réelle
-    // Navigator.pushReplacementNamed(context, '/home');
+    if (!mounted) return;
 
-    // Pour l'instant, juste un message
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('✅ Connexion réussie !'),
-          backgroundColor: Colors.green,
-          duration: Duration(seconds: 2),
-        ),
-      );
-    }
+    // ✅ On remplace l'écran actuel par le Dashboard
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const HomeDashboardPage(),
+      ),
+    );
+
+    //  (Optionnel) Afficher une confirmation après la navigation
+     WidgetsBinding.instance.addPostFrameCallback((_) {
+       ScaffoldMessenger.of(context).showSnackBar(
+         const SnackBar(
+           content: Text('✅ Connexion réussie !'),
+           backgroundColor: Colors.green,
+           duration: Duration(seconds: 2),
+         ),
+       );
+     });
   }
 
   /// Simplifier les messages d'erreur pour l'utilisateur
