@@ -1,14 +1,13 @@
 {
   "project_info": {
-    "project_number": "28999458539",
-    "firebase_url": "https://myautocentral2025-default-rtdb.europe-west1.firebasedatabase.app",
-    "project_id": "myautocentral2025",
-    "storage_bucket": "myautocentral2025.firebasestorage.app"
+    "project_number": "1085797755521",
+    "project_id": "autocentral-free",
+    "storage_bucket": "autocentral-free.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:28999458539:android:ad8bd85a5e541b3cd368ae",
+        "mobilesdk_app_id": "1:1085797755521:android:ab3b5b025a31b738643b80",
         "android_client_info": {
           "package_name": "com.example.autocentral"
         }
@@ -16,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyB_sqhQvopSzNYiQQnJTKdb2eitA1uEjlY"
+          "current_key": "AIzaSyBwq_9W2ih_CGugA4mR_r2shsN2uk2FcmI"
         }
       ],
       "services": {

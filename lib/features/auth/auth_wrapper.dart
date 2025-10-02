@@ -1,9 +1,9 @@
 // lib/features/auth/auth_wrapper.dart
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../../core/services/auth_service.dart';
-import '../dashboard/dashboard_page.dart';
-import 'login_page.dart';
+import 'package:autocentral/core/services/auth_service.dart';
+import 'package:autocentral/features/dashboard/dashboard_page.dart';
+import 'package:autocentral/features/auth/login_page.dart';
 
 class AuthWrapper extends StatelessWidget {
   const AuthWrapper({super.key});
@@ -41,8 +41,9 @@ class AuthWrapper extends StatelessWidget {
                   const SizedBox(height: 24),
                   ElevatedButton(
                     onPressed: () {
-                      // Force la reconstruction du StreamBuilder
-                      (context as Element).reassemble();
+                      Navigator.of(context).pushReplacement(
+                        MaterialPageRoute(builder: (_) => const AuthWrapper()),
+                      );
                     },
                     child: const Text('Réessayer'),
                   ),

@@ -1,8 +1,8 @@
 // lib/features/auth/login_page.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../../core/services/auth_service.dart';
-import '../dashboard/dashboard_page.dart';
+import 'package:autocentral/core/services/auth_service.dart';
+import 'package:autocentral/features/dashboard/dashboard_page.dart';
 import 'register_page.dart';
 import 'reset_password_page.dart';
 import 'package:autocentral/pigeon_definitions/user_api.g.dart'; // UserDetails

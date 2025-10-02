@@ -41,52 +41,49 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyDcjNnnEn9qWw4kAU41bleT41rqqin0LuA',
-    appId: '1:28999458539:web:7fb9e326d01a2bcad368ae',
-    messagingSenderId: '28999458539',
-    projectId: 'myautocentral2025',
-    authDomain: 'myautocentral2025.firebaseapp.com',
-    databaseURL: 'https://myautocentral2025-default-rtdb.europe-west1.firebasedatabase.app',
-    storageBucket: 'myautocentral2025.firebasestorage.app',
+    apiKey: 'AIzaSyCy-SE6QTpy_ZQb8vQ7Vt6diwsKkxuH2yk',
+    appId: '1:1085797755521:web:d720858502dfcbd0643b80',
+    messagingSenderId: '1085797755521',
+    projectId: 'autocentral-free',
+    authDomain: 'autocentral-free.firebaseapp.com',
+    storageBucket: 'autocentral-free.firebasestorage.app',
+    measurementId: 'G-TTH2D6Q95Z',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyB_sqhQvopSzNYiQQnJTKdb2eitA1uEjlY',
-    appId: '1:28999458539:android:ad8bd85a5e541b3cd368ae',
-    messagingSenderId: '28999458539',
-    projectId: 'myautocentral2025',
-    databaseURL: 'https://myautocentral2025-default-rtdb.europe-west1.firebasedatabase.app',
-    storageBucket: 'myautocentral2025.firebasestorage.app',
+    apiKey: 'AIzaSyBwq_9W2ih_CGugA4mR_r2shsN2uk2FcmI',
+    appId: '1:1085797755521:android:ab3b5b025a31b738643b80',
+    messagingSenderId: '1085797755521',
+    projectId: 'autocentral-free',
+    storageBucket: 'autocentral-free.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyAkQWjBodp8ASKl6kX_NcCtx7bxn7B8ivs',
-    appId: '1:28999458539:ios:32c762f2cac7a84ad368ae',
-    messagingSenderId: '28999458539',
-    projectId: 'myautocentral2025',
-    databaseURL: 'https://myautocentral2025-default-rtdb.europe-west1.firebasedatabase.app',
-    storageBucket: 'myautocentral2025.firebasestorage.app',
+    apiKey: 'AIzaSyDarBAbApT0uVJTgAf5FMObaDdNJfV8bFA',
+    appId: '1:1085797755521:ios:c6ea1f7231c1504f643b80',
+    messagingSenderId: '1085797755521',
+    projectId: 'autocentral-free',
+    storageBucket: 'autocentral-free.firebasestorage.app',
     iosBundleId: 'com.example.autocentral',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: 'AIzaSyAkQWjBodp8ASKl6kX_NcCtx7bxn7B8ivs',
-    appId: '1:28999458539:ios:32c762f2cac7a84ad368ae',
-    messagingSenderId: '28999458539',
-    projectId: 'myautocentral2025',
-    databaseURL: 'https://myautocentral2025-default-rtdb.europe-west1.firebasedatabase.app',
-    storageBucket: 'myautocentral2025.firebasestorage.app',
+    apiKey: 'AIzaSyDarBAbApT0uVJTgAf5FMObaDdNJfV8bFA',
+    appId: '1:1085797755521:ios:c6ea1f7231c1504f643b80',
+    messagingSenderId: '1085797755521',
+    projectId: 'autocentral-free',
+    storageBucket: 'autocentral-free.firebasestorage.app',
     iosBundleId: 'com.example.autocentral',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(
-    apiKey: 'AIzaSyDcjNnnEn9qWw4kAU41bleT41rqqin0LuA',
-    appId: '1:28999458539:web:3225754cd0d3645cd368ae',
-    messagingSenderId: '28999458539',
-    projectId: 'myautocentral2025',
-    authDomain: 'myautocentral2025.firebaseapp.com',
-    databaseURL: 'https://myautocentral2025-default-rtdb.europe-west1.firebasedatabase.app',
-    storageBucket: 'myautocentral2025.firebasestorage.app',
+    apiKey: 'AIzaSyCy-SE6QTpy_ZQb8vQ7Vt6diwsKkxuH2yk',
+    appId: '1:1085797755521:web:f29c4fe6d4846e0b643b80',
+    messagingSenderId: '1085797755521',
+    projectId: 'autocentral-free',
+    authDomain: 'autocentral-free.firebaseapp.com',
+    storageBucket: 'autocentral-free.firebasestorage.app',
+    measurementId: 'G-RWR0ZH8MPJ',
   );
 
 }

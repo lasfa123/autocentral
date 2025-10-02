@@ -164,15 +164,17 @@ class _VehicleListPageState extends State<VehicleListPage> {
                 final vehicles = snapshot.data ?? [];
 
                 WidgetsBinding.instance.addPostFrameCallback((_) {
-                  if (_allVehicles != vehicles) {
-                    setState(() {
-                      _allVehicles = vehicles;
-                      if (_searchController.text.isEmpty) {
-                        _filteredVehicles = vehicles;
-                      } else {
-                        _onSearchChanged(_searchController.text);
-                      }
-                    });
+                  if (!_areVehicleListsEqual(_allVehicles, vehicles)) {
+                    if (mounted) {
+                      setState(() {
+                        _allVehicles = vehicles;
+                        if (_searchController.text.isEmpty) {
+                          _filteredVehicles = vehicles;
+                        } else {
+                          _onSearchChanged(_searchController.text);
+                        }
+                      });
+                    }
                   }
                 });
 
@@ -430,3 +432,12 @@ class _VehicleListPageState extends State<VehicleListPage> {
     }
   }
 }
+
+  bool _areVehicleListsEqual(List<CarModel> a, List<CarModel> b) {
+    if (identical(a, b)) return true;
+    if (a.length != b.length) return false;
+    for (int i = 0; i < a.length; i++) {
+      if (a[i].id != b[i].id) return false;
+    }
+    return true;
+  }

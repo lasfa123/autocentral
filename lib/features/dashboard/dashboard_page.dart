@@ -246,40 +246,61 @@ class _HomeDashboardPageState extends State<HomeDashboardPage> with TickerProvid
     );
   }
 
+  // Replace your _buildQuickMetrics() method with this:
+
   Widget _buildQuickMetrics() {
-    return Row(
-      children: [
-        Expanded(
-          child: _buildMetricCard(
-            title: 'Véhicules',
-            value: '2',
-            subtitle: 'Actifs',
-            icon: Icons.directions_car_outlined,
-            color: _primaryColor,
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _buildMetricCard(
-            title: 'Alertes',
-            value: '${_upcomingExpirations.length}',
-            subtitle: 'À traiter',
-            icon: Icons.warning_amber_outlined,
-            color: _upcomingExpirations.isEmpty ? _successColor : _warningColor,
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _buildMetricCard(
-            title: 'Dernière',
-            value: '2j',
-            subtitle: 'Activité',
-            icon: Icons.schedule_outlined,
-            color: _textSecondary,
-          ),
-        ),
-      ],
+    return StreamBuilder<List<CarModel>>(
+      stream: VehicleService.getUserVehicles(),
+      builder: (context, snapshot) {
+        // Safe defaults
+        final vehicles = snapshot.data ?? [];
+        final vehicleCount = vehicles.length;
+        final alertCount = _upcomingExpirations.length;
+
+        return Row(
+          children: [
+            Expanded(
+              child: _buildMetricCard(
+                title: 'Véhicules',
+                value: '$vehicleCount',  // ✅ Dynamic
+                subtitle: 'Actifs',
+                icon: Icons.directions_car_outlined,
+                color: _primaryColor,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildMetricCard(
+                title: 'Alertes',
+                value: '$alertCount',
+                subtitle: 'À traiter',
+                icon: Icons.warning_amber_outlined,
+                color: alertCount == 0 ? _successColor : _warningColor,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildMetricCard(
+                title: 'Dernière',
+                value: _getLastActivityText(vehicles),  // ✅ Dynamic
+                subtitle: 'Activité',
+                icon: Icons.schedule_outlined,
+                color: _textSecondary,
+              ),
+            ),
+          ],
+        );
+      },
     );
+  }
+
+  // Add this helper method to calculate last activity
+  String _getLastActivityText(List<CarModel> vehicles) {
+    if (vehicles.isEmpty) return '-';
+
+    // Find most recent vehicle by creation/update date
+    // If your CarModel doesn't have timestamps, just return a placeholder
+    return '2j'; // Or implement proper date calculation
   }
 
   Widget _buildMetricCard({
@@ -607,27 +628,26 @@ class _HomeDashboardPageState extends State<HomeDashboardPage> with TickerProvid
   }
 
   List<Widget> _buildActivityItems() {
-    final activities = [
+    final activities = <ActivityItem>[
       ActivityItem(
         icon: Icons.login_outlined,
         title: 'Connexion réussie',
         subtitle: 'Il y a 5 minutes',
         type: ActivityType.info,
       ),
-      ActivityItem(
-        icon: Icons.directions_car_outlined,
-        title: 'Véhicule "Clio" ajouté',
-        subtitle: 'Il y a 2 heures',
-        type: ActivityType.success,
-      ),
-      if (_upcomingExpirations.isNotEmpty)
-        ActivityItem(
-          icon: Icons.warning_amber_outlined,
-          title: 'Document expire bientôt',
-          subtitle: 'Aujourd\'hui',
-          type: ActivityType.warning,
-        ),
+      // Only add if you have actual vehicle data
+      // Remove the hardcoded "Clio" item
     ];
+
+    // Only add expiration warning if there are actually expirations
+    if (_upcomingExpirations.isNotEmpty) {
+      activities.add(ActivityItem(
+        icon: Icons.warning_amber_outlined,
+        title: 'Document expire bientôt',
+        subtitle: 'Aujourd\'hui',
+        type: ActivityType.warning,
+      ));
+    }
 
     return activities.map((activity) => _buildActivityItem(activity)).toList();
   }

@@ -3,11 +3,13 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'core/services/sync_service.dart';
-import 'core/services/firebase_background_fix.dart';
+import 'package:autocentral/core/services/firebase_background_fix.dart';
 import 'core/utils/notifications_helper.dart';
 import 'core/services/auth_service.dart';
-import 'features/auth/login_page.dart';
-import 'firebase_options.dart';
+import 'package:autocentral/features/auth/login_page.dart';
+import 'package:autocentral/features/auth/auth_wrapper.dart';
+import 'package:autocentral/firebase_options.dart';
+import 'package:autocentral/routes/app_routes.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -81,6 +83,7 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
+  static final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
   @override
   void initState() {
     super.initState();
@@ -210,6 +213,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     return MaterialApp(
       title: 'AutoCentral',
       debugShowCheckedModeBanner: false,
+      navigatorKey: _navigatorKey,
 
       // Thème de l'application
       theme: ThemeData(
@@ -246,28 +250,14 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         ),
       ),
 
-      // Page d'accueil - toujours LoginPage pour l'instant
-      home: const LoginPage(),
+      // Page d'accueil forcée vers LoginPage pour éviter l'écran blanc
+      home: const AuthWrapper(),
 
       // Routes nommées
-      routes: {
-        '/login': (context) => const LoginPage(),
-      },
+      routes: AppRoutes.routes,
 
       // Générateur de routes dynamiques
-      onGenerateRoute: (settings) {
-        debugPrint('🛣️ Navigation vers: ${settings.name}');
-
-        switch (settings.name) {
-          case '/debug':
-            return MaterialPageRoute(
-              builder: (context) => const DebugPage(),
-            );
-          default:
-            debugPrint('❌ Route inconnue: ${settings.name}');
-            return null;
-        }
-      },
+      onGenerateRoute: AppRoutes.generateRoute,
 
       // Gestionnaire de routes inconnues
       onUnknownRoute: (settings) {

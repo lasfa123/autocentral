@@ -2,6 +2,7 @@
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz;
+import 'package:flutter/material.dart';
 import '../models/vehicle.dart';
 import '../models/document.dart';
 import 'date_helper.dart';
@@ -272,21 +273,33 @@ class NotificationsHelper {
 
     switch (parts[0]) {
       case 'document_expiry':
-      // Navigation vers les documents du véhicule
         if (parts.length >= 2) {
           final vehicleId = parts[1];
-          // TODO: Naviguer vers DocumentListPage(vehicleId: vehicleId)
+          final navigator = _getNavigator();
+          navigator?.pushNamed('/documentList', arguments: vehicleId);
         }
         break;
       case 'insurance_expiry':
       case 'inspection_expiry':
-      // Navigation vers le détail du véhicule
         if (parts.length >= 2) {
           final vehicleId = parts[1];
-          // TODO: Naviguer vers VehicleDetailPage(vehicle: vehicleId)
+          final navigator = _getNavigator();
+          navigator?.pushNamed('/vehicleDetail', arguments: vehicleId);
         }
         break;
     }
+  }
+
+  static NavigatorState? _getNavigator() {
+    // Try root navigator from context-less lookup
+    try {
+      // Fallback: use WidgetsBinding to get current context via scheduler (may be null early)
+      final context = WidgetsBinding.instance.focusManager.primaryFocus?.context;
+      if (context != null) {
+        return Navigator.of(context);
+      }
+    } catch (_) {}
+    return null;
   }
 }
 

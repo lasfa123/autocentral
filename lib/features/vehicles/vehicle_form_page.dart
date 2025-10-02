@@ -668,9 +668,10 @@ class _VehicleFormPageState extends State<VehicleFormPage> {
         return;
     }
 
+    final clampedInitial = _clampDate(initialDate ?? DateTime.now(), firstDate, lastDate);
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: initialDate ?? DateTime.now(),
+      initialDate: clampedInitial,
       firstDate: firstDate,
       lastDate: lastDate,
       locale: const Locale('fr', 'FR'),
@@ -702,6 +703,12 @@ class _VehicleFormPageState extends State<VehicleFormPage> {
         }
       });
     }
+  }
+
+  DateTime _clampDate(DateTime date, DateTime first, DateTime last) {
+    if (date.isBefore(first)) return first;
+    if (date.isAfter(last)) return last;
+    return date;
   }
 
   Future<void> _saveVehicle() async {
