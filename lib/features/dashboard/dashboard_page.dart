@@ -1,9 +1,9 @@
 // lib/features/dashboard/home_dashboard_page.dart
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:provider/provider.dart';
 import '../../core/services/auth_service.dart';
-import '../../core/services/vehicle_service.dart';
-import '../../core/models/vehicle.dart';
+import 'dashboard_controller.dart';
 import '../settings/profile_page.dart';
 import '../vehicles/vehicle_list_page.dart';
 
@@ -19,7 +19,7 @@ class _HomeDashboardPageState extends State<HomeDashboardPage> with TickerProvid
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
   int _currentIndex = 0;
-  List<CarModel> _upcomingExpirations = [];
+  late final DashboardController _controller;
 
   // Palette de couleurs ultra propre et douce
   static const Color _primaryColor = Color(0xFF2563EB); // Bleu moderne
@@ -43,7 +43,10 @@ class _HomeDashboardPageState extends State<HomeDashboardPage> with TickerProvid
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _fadeController, curve: Curves.easeOut),
     );
-    _loadUpcomingExpirations();
+    _controller = DashboardController();
+    // Démarrer le chargement des données du dashboard
+    // ignore: discarded_futures
+    _controller.initialize();
     _fadeController.forward();
   }
 
@@ -51,20 +54,8 @@ class _HomeDashboardPageState extends State<HomeDashboardPage> with TickerProvid
   void dispose() {
     _pageController.dispose();
     _fadeController.dispose();
+    _controller.dispose();
     super.dispose();
-  }
-
-  Future<void> _loadUpcomingExpirations() async {
-    try {
-      final vehicles = await VehicleService.getVehiclesWithUpcomingExpirations();
-      if (mounted) {
-        setState(() {
-          _upcomingExpirations = vehicles;
-        });
-      }
-    } catch (e) {
-      // Gérer l'erreur silencieusement
-    }
   }
 
   @override
@@ -74,29 +65,38 @@ class _HomeDashboardPageState extends State<HomeDashboardPage> with TickerProvid
 
     return Scaffold(
       backgroundColor: _surfaceColor,
-      body: FadeTransition(
-        opacity: _fadeAnimation,
-        child: PageView(
-          controller: _pageController,
-          onPageChanged: (index) {
-            setState(() {
-              _currentIndex = index;
-            });
-          },
-          children: [
-            _buildHomePage(firstName),
-            const VehicleListPage(),
-            const ProfilePage(),
-          ],
+      body: ChangeNotifierProvider.value(
+        value: _controller,
+        child: FadeTransition(
+          opacity: _fadeAnimation,
+          child: Consumer<DashboardController>(
+            builder: (_, controller, __) {
+              return PageView(
+                controller: _pageController,
+                onPageChanged: (index) {
+                  setState(() {
+                    _currentIndex = index;
+                  });
+                },
+                children: [
+                  _buildHomePage(controller, firstName),
+                  const VehicleListPage(),
+                  const ProfilePage(),
+                ],
+              );
+            },
+          ),
         ),
       ),
       bottomNavigationBar: _buildBottomNavigationBar(),
     );
   }
 
-  Widget _buildHomePage(String firstName) {
-    return CustomScrollView(
-      physics: const BouncingScrollPhysics(),
+  Widget _buildHomePage(DashboardController controller, String firstName) {
+    return RefreshIndicator(
+      onRefresh: controller.refresh,
+      child: CustomScrollView(
+        physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
       slivers: [
         // Header épuré avec design moderne
         SliverToBoxAdapter(
@@ -192,7 +192,7 @@ class _HomeDashboardPageState extends State<HomeDashboardPage> with TickerProvid
                             color: _textSecondary,
                             size: 20,
                           ),
-                          if (_upcomingExpirations.isNotEmpty)
+                          if (controller.hasUrgentAlerts)
                             Positioned(
                               right: 8,
                               top: 8,
@@ -221,7 +221,22 @@ class _HomeDashboardPageState extends State<HomeDashboardPage> with TickerProvid
           sliver: SliverList(
             delegate: SliverChildListDelegate([
               // Métriques rapides
-              _buildQuickMetrics(),
+              if (controller.isLoading)
+                Center(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 24),
+                    child: SizedBox(
+                      height: 24,
+                      width: 24,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: _primaryColor,
+                      ),
+                    ),
+                  ),
+                )
+              else
+                _buildQuickMetrics(controller),
 
               const SizedBox(height: 24),
 
@@ -231,76 +246,61 @@ class _HomeDashboardPageState extends State<HomeDashboardPage> with TickerProvid
               const SizedBox(height: 24),
 
               // Section prioritaire
-              _buildPrioritySection(),
+              _buildPrioritySection(controller),
 
               const SizedBox(height: 24),
 
               // Activité récente
-              _buildRecentActivity(),
+              _buildRecentActivity(controller),
 
               const SizedBox(height: 100),
             ]),
           ),
         ),
       ],
+      ),
     );
   }
 
-  // Replace your _buildQuickMetrics() method with this:
+  Widget _buildQuickMetrics(DashboardController controller) {
+    final metrics = controller.metrics;
+    final vehicleCount = metrics.totalVehicles;
+    final alertCount = metrics.urgentAlerts;
+    final lastActivity = controller.getLastActivityText();
 
-  Widget _buildQuickMetrics() {
-    return StreamBuilder<List<CarModel>>(
-      stream: VehicleService.getUserVehicles(),
-      builder: (context, snapshot) {
-        // Safe defaults
-        final vehicles = snapshot.data ?? [];
-        final vehicleCount = vehicles.length;
-        final alertCount = _upcomingExpirations.length;
-
-        return Row(
-          children: [
-            Expanded(
-              child: _buildMetricCard(
-                title: 'Véhicules',
-                value: '$vehicleCount',  // ✅ Dynamic
-                subtitle: 'Actifs',
-                icon: Icons.directions_car_outlined,
-                color: _primaryColor,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildMetricCard(
-                title: 'Alertes',
-                value: '$alertCount',
-                subtitle: 'À traiter',
-                icon: Icons.warning_amber_outlined,
-                color: alertCount == 0 ? _successColor : _warningColor,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildMetricCard(
-                title: 'Dernière',
-                value: _getLastActivityText(vehicles),  // ✅ Dynamic
-                subtitle: 'Activité',
-                icon: Icons.schedule_outlined,
-                color: _textSecondary,
-              ),
-            ),
-          ],
-        );
-      },
+    return Row(
+      children: [
+        Expanded(
+          child: _buildMetricCard(
+            title: 'Véhicules',
+            value: '$vehicleCount',
+            subtitle: 'Actifs',
+            icon: Icons.directions_car_outlined,
+            color: _primaryColor,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _buildMetricCard(
+            title: 'Alertes',
+            value: '$alertCount',
+            subtitle: 'À traiter',
+            icon: Icons.warning_amber_outlined,
+            color: alertCount == 0 ? _successColor : _warningColor,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _buildMetricCard(
+            title: 'Dernière',
+            value: lastActivity,
+            subtitle: 'Activité',
+            icon: Icons.schedule_outlined,
+            color: _textSecondary,
+          ),
+        ),
+      ],
     );
-  }
-
-  // Add this helper method to calculate last activity
-  String _getLastActivityText(List<CarModel> vehicles) {
-    if (vehicles.isEmpty) return '-';
-
-    // Find most recent vehicle by creation/update date
-    // If your CarModel doesn't have timestamps, just return a placeholder
-    return '2j'; // Or implement proper date calculation
   }
 
   Widget _buildMetricCard({
@@ -457,8 +457,8 @@ class _HomeDashboardPageState extends State<HomeDashboardPage> with TickerProvid
     );
   }
 
-  Widget _buildPrioritySection() {
-    if (_upcomingExpirations.isEmpty) {
+  Widget _buildPrioritySection(DashboardController controller) {
+    if (controller.expirationAlerts.isEmpty) {
       return Container(
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
@@ -503,6 +503,7 @@ class _HomeDashboardPageState extends State<HomeDashboardPage> with TickerProvid
       );
     }
 
+    final alertCount = controller.expirationAlerts.length;
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -549,7 +550,7 @@ class _HomeDashboardPageState extends State<HomeDashboardPage> with TickerProvid
                       ),
                     ),
                     Text(
-                      '${_upcomingExpirations.length} document(s) à renouveler',
+                      '$alertCount document(s) à renouveler',
                       style: TextStyle(
                         fontSize: 13,
                         color: _textSecondary,
@@ -565,7 +566,7 @@ class _HomeDashboardPageState extends State<HomeDashboardPage> with TickerProvid
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
-                  '${_upcomingExpirations.length}',
+                  '$alertCount',
                   style: TextStyle(
                     color: _errorColor,
                     fontSize: 12,
@@ -580,7 +581,7 @@ class _HomeDashboardPageState extends State<HomeDashboardPage> with TickerProvid
     );
   }
 
-  Widget _buildRecentActivity() {
+  Widget _buildRecentActivity(DashboardController controller) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -621,59 +622,45 @@ class _HomeDashboardPageState extends State<HomeDashboardPage> with TickerProvid
             ],
           ),
           const SizedBox(height: 20),
-          ..._buildActivityItems(),
+          ..._buildActivityItems(controller),
         ],
       ),
     );
   }
 
-  List<Widget> _buildActivityItems() {
-    final activities = <ActivityItem>[
-      ActivityItem(
-        icon: Icons.login_outlined,
-        title: 'Connexion réussie',
-        subtitle: 'Il y a 5 minutes',
-        type: ActivityType.info,
-      ),
-      // Only add if you have actual vehicle data
-      // Remove the hardcoded "Clio" item
-    ];
-
-    // Only add expiration warning if there are actually expirations
-    if (_upcomingExpirations.isNotEmpty) {
-      activities.add(ActivityItem(
-        icon: Icons.warning_amber_outlined,
-        title: 'Document expire bientôt',
-        subtitle: 'Aujourd\'hui',
-        type: ActivityType.warning,
-      ));
+  List<Widget> _buildActivityItems(DashboardController controller) {
+    final activities = controller.recentActivities;
+    if (activities.isEmpty) {
+      return [
+        Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: _primaryColor.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(Icons.inbox_outlined, color: _textSecondary, size: 18),
+            ),
+            const SizedBox(width: 16),
+            const Expanded(
+              child: Text(
+                'Aucune activité récente',
+                style: TextStyle(color: _textSecondary),
+              ),
+            ),
+          ],
+        ),
+      ];
     }
 
     return activities.map((activity) => _buildActivityItem(activity)).toList();
   }
 
-  Widget _buildActivityItem(ActivityItem activity) {
-    Color iconColor;
-    Color bgColor;
-
-    switch (activity.type) {
-      case ActivityType.success:
-        iconColor = _successColor;
-        bgColor = _successColor.withOpacity(0.1);
-        break;
-      case ActivityType.warning:
-        iconColor = _warningColor;
-        bgColor = _warningColor.withOpacity(0.1);
-        break;
-      case ActivityType.error:
-        iconColor = _errorColor;
-        bgColor = _errorColor.withOpacity(0.1);
-        break;
-      case ActivityType.info:
-      default:
-        iconColor = _primaryColor;
-        bgColor = _primaryColor.withOpacity(0.1);
-    }
+  Widget _buildActivityItem(ActivityLog activity) {
+    final Color iconColor = activity.iconColor;
+    final Color bgColor = iconColor.withOpacity(0.1);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
@@ -702,12 +689,31 @@ class _HomeDashboardPageState extends State<HomeDashboardPage> with TickerProvid
                   ),
                 ),
                 const SizedBox(height: 2),
-                Text(
-                  activity.subtitle,
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: _textSecondary,
-                  ),
+                Row(
+                  children: [
+                    Text(
+                      activity.timeAgo,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: _textSecondary,
+                      ),
+                    ),
+                    if (activity.description.isNotEmpty) ...[
+                      const SizedBox(width: 8),
+                      const Text('·', style: TextStyle(color: _textTertiary)),
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Text(
+                          activity.description,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: _textSecondary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ],
             ),
@@ -801,20 +807,3 @@ class _HomeDashboardPageState extends State<HomeDashboardPage> with TickerProvid
     return 'U';
   }
 }
-
-// Classes utilitaires
-class ActivityItem {
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final ActivityType type;
-
-  ActivityItem({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.type,
-  });
-}
-
-enum ActivityType { success, warning, error, info }
