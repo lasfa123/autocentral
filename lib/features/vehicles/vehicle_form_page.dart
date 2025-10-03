@@ -1,12 +1,15 @@
 // lib/features/vehicles/vehicle_form_page.dart
 import 'dart:typed_data';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:file_selector/file_selector.dart';
+import 'package:image/image.dart' as img;
 import '../../core/models/vehicle.dart';
 import '../../core/services/vehicle_service.dart';
+import '../../widgets/modern_calendar_picker.dart';
 
 class VehicleFormPage extends StatefulWidget {
-  final CarModel? vehicle; // null pour ajout, non-null pour modification
+  final CarModel? vehicle;
 
   const VehicleFormPage({super.key, this.vehicle});
 
@@ -28,10 +31,14 @@ class _VehicleFormPageState extends State<VehicleFormPage> {
   DateTime? _inspectionExpiry;
   Uint8List? _selectedImageData;
   String? _selectedImageName;
-  String? _existingPhotoUrl;
+  String? _existingPhotoBase64; // Changé de photoUrl à photoBase64
 
   bool _isLoading = false;
   bool _isEditing = false;
+  bool _isCompressing = false;
+
+  // Limite pour Firestore : 1MB
+  static const int maxImageSize = 800 * 1024; // 800KB pour avoir de la marge
 
   final List<String> _popularBrands = [
     'Peugeot', 'Renault', 'Citroën', 'Toyota', 'Volkswagen',
@@ -45,7 +52,6 @@ class _VehicleFormPageState extends State<VehicleFormPage> {
     if (_isEditing) {
       _populateFormWithVehicleData();
     } else {
-      // Valeurs par défaut pour un nouveau véhicule
       _purchaseDate = DateTime.now();
       _insuranceExpiry = DateTime.now().add(const Duration(days: 365));
       _inspectionExpiry = DateTime.now().add(const Duration(days: 365));
@@ -63,7 +69,7 @@ class _VehicleFormPageState extends State<VehicleFormPage> {
     _purchaseDate = vehicle.purchaseDate;
     _insuranceExpiry = vehicle.insuranceExpiry;
     _inspectionExpiry = vehicle.inspectionExpiry;
-    _existingPhotoUrl = vehicle.photoUrl;
+    _existingPhotoBase64 = vehicle.photoUrl; // Supposant que c'est déjà en Base64
   }
 
   @override
@@ -105,20 +111,14 @@ class _VehicleFormPageState extends State<VehicleFormPage> {
               child: ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
-                  // Section Photo
                   _buildPhotoSection(),
                   const SizedBox(height: 20),
-
-                  // Section Informations générales
                   _buildSectionCard(
                     title: 'Informations générales',
                     icon: Icons.info_outline,
                     children: [
-                      // Marque avec suggestions
                       _buildBrandField(),
                       const SizedBox(height: 16),
-
-                      // Modèle
                       TextFormField(
                         controller: _modelController,
                         textCapitalization: TextCapitalization.words,
@@ -135,8 +135,6 @@ class _VehicleFormPageState extends State<VehicleFormPage> {
                         },
                       ),
                       const SizedBox(height: 16),
-
-                      // Année et Kilométrage sur la même ligne
                       Row(
                         children: [
                           Expanded(
@@ -187,10 +185,7 @@ class _VehicleFormPageState extends State<VehicleFormPage> {
                       ),
                     ],
                   ),
-
                   const SizedBox(height: 20),
-
-                  // Section Immatriculation
                   _buildSectionCard(
                     title: 'Immatriculation',
                     icon: Icons.confirmation_number,
@@ -228,34 +223,37 @@ class _VehicleFormPageState extends State<VehicleFormPage> {
                       ),
                     ],
                   ),
-
                   const SizedBox(height: 20),
-
-                  // Section Dates importantes
                   _buildSectionCard(
                     title: 'Dates importantes',
                     icon: Icons.event,
                     children: [
-                      _buildDateField(
+                      _buildModernDateField(
                         label: 'Date d\'achat',
                         date: _purchaseDate,
-                        onTap: () => _selectDate(context, 'purchase'),
+                        onDateSelected: (date) => setState(() => _purchaseDate = date),
                         icon: Icons.shopping_cart,
+                        firstDate: DateTime(1990),
+                        lastDate: DateTime.now(),
                       ),
                       const SizedBox(height: 16),
-                      _buildDateField(
+                      _buildModernDateField(
                         label: 'Échéance assurance',
                         date: _insuranceExpiry,
-                        onTap: () => _selectDate(context, 'insurance'),
+                        onDateSelected: (date) => setState(() => _insuranceExpiry = date),
                         icon: Icons.security,
+                        firstDate: DateTime.now(),
+                        lastDate: DateTime.now().add(const Duration(days: 365 * 5)),
                         isImportant: true,
                       ),
                       const SizedBox(height: 16),
-                      _buildDateField(
+                      _buildModernDateField(
                         label: 'Échéance contrôle technique',
                         date: _inspectionExpiry,
-                        onTap: () => _selectDate(context, 'inspection'),
+                        onDateSelected: (date) => setState(() => _inspectionExpiry = date),
                         icon: Icons.build_circle,
+                        firstDate: DateTime.now(),
+                        lastDate: DateTime.now().add(const Duration(days: 365 * 5)),
                         isImportant: true,
                       ),
                     ],
@@ -263,8 +261,6 @@ class _VehicleFormPageState extends State<VehicleFormPage> {
                 ],
               ),
             ),
-
-            // Boutons d'action
             _buildActionButtons(),
           ],
         ),
@@ -296,12 +292,24 @@ class _VehicleFormPageState extends State<VehicleFormPage> {
                 'Photo du véhicule',
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
               ),
+              if (_isCompressing) ...[
+                const SizedBox(width: 12),
+                const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Compression...',
+                  style: TextStyle(fontSize: 12, color: Colors.blue[600]),
+                ),
+              ],
             ],
           ),
           const SizedBox(height: 16),
-
           GestureDetector(
-            onTap: _selectImage,
+            onTap: _isCompressing ? null : _selectImage,
             child: Container(
               width: double.infinity,
               height: 200,
@@ -313,16 +321,13 @@ class _VehicleFormPageState extends State<VehicleFormPage> {
               child: _selectedImageData != null
                   ? ClipRRect(
                 borderRadius: BorderRadius.circular(12),
-                child: Image.memory(
-                  _selectedImageData!,
-                  fit: BoxFit.cover,
-                ),
+                child: Image.memory(_selectedImageData!, fit: BoxFit.cover),
               )
-                  : _existingPhotoUrl != null
+                  : _existingPhotoBase64 != null
                   ? ClipRRect(
                 borderRadius: BorderRadius.circular(12),
-                child: Image.network(
-                  _existingPhotoUrl!,
+                child: Image.memory(
+                  base64Decode(_existingPhotoBase64!),
                   fit: BoxFit.cover,
                   errorBuilder: (context, error, stackTrace) => _buildPlaceholder(),
                 ),
@@ -330,20 +335,19 @@ class _VehicleFormPageState extends State<VehicleFormPage> {
                   : _buildPlaceholder(),
             ),
           ),
-
-          if (_selectedImageData != null || _existingPhotoUrl != null)
+          if (_selectedImageData != null || _existingPhotoBase64 != null)
             Padding(
               padding: const EdgeInsets.only(top: 12),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
                   TextButton.icon(
-                    onPressed: _selectImage,
+                    onPressed: _isCompressing ? null : _selectImage,
                     icon: const Icon(Icons.edit),
                     label: const Text('Modifier'),
                   ),
                   TextButton.icon(
-                    onPressed: _removeImage,
+                    onPressed: _isCompressing ? null : _removeImage,
                     icon: const Icon(Icons.delete, color: Colors.red),
                     label: const Text('Supprimer', style: TextStyle(color: Colors.red)),
                   ),
@@ -367,7 +371,7 @@ class _VehicleFormPageState extends State<VehicleFormPage> {
         ),
         const SizedBox(height: 4),
         Text(
-          'JPG ou PNG (optionnel)',
+          'JPG ou PNG (max 800KB après compression)',
           style: TextStyle(color: Colors.grey[500], fontSize: 12),
         ),
       ],
@@ -399,10 +403,7 @@ class _VehicleFormPageState extends State<VehicleFormPage> {
             children: [
               Icon(icon, color: Colors.grey[600]),
               const SizedBox(width: 8),
-              Text(
-                title,
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-              ),
+              Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
             ],
           ),
           const SizedBox(height: 20),
@@ -418,8 +419,9 @@ class _VehicleFormPageState extends State<VehicleFormPage> {
         if (textEditingValue.text.isEmpty) {
           return const Iterable<String>.empty();
         }
-        return _popularBrands.where((brand) =>
-            brand.toLowerCase().contains(textEditingValue.text.toLowerCase()));
+        return _popularBrands.where(
+              (brand) => brand.toLowerCase().contains(textEditingValue.text.toLowerCase()),
+        );
       },
       onSelected: (String selection) {
         _brandController.text = selection;
@@ -447,71 +449,94 @@ class _VehicleFormPageState extends State<VehicleFormPage> {
     );
   }
 
-  Widget _buildDateField({
+  Widget _buildModernDateField({
     required String label,
     required DateTime? date,
-    required VoidCallback onTap,
+    required Function(DateTime) onDateSelected,
     required IconData icon,
+    DateTime? firstDate,
+    DateTime? lastDate,
     bool isImportant = false,
   }) {
     final isExpiringSoon = date != null &&
         date.difference(DateTime.now()).inDays <= 30 &&
         isImportant;
+    final isExpired = date != null && date.isBefore(DateTime.now()) && isImportant;
 
-    return GestureDetector(
-      onTap: onTap,
+    return InkWell(
+      onTap: () async {
+        final selectedDate = await showModernCalendarPicker(
+          context: context,
+          initialDate: date,
+          firstDate: firstDate,
+          lastDate: lastDate,
+          title: label,
+        );
+        if (selectedDate != null) onDateSelected(selectedDate);
+      },
+      borderRadius: BorderRadius.circular(12),
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: isExpiringSoon ? Colors.orange[50] : Colors.grey[50],
-          borderRadius: BorderRadius.circular(8),
+          gradient: isExpired
+              ? LinearGradient(colors: [Colors.red[50]!, Colors.red[100]!])
+              : isExpiringSoon
+              ? LinearGradient(colors: [Colors.orange[50]!, Colors.orange[100]!])
+              : null,
+          color: isExpired || isExpiringSoon ? null : Colors.grey[50],
+          borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isExpiringSoon ? Colors.orange[300]! : Colors.grey[300]!,
+            color: isExpired
+                ? Colors.red[300]!
+                : isExpiringSoon
+                ? Colors.orange[300]!
+                : Colors.grey[300]!,
+            width: isExpired || isExpiringSoon ? 2 : 1,
           ),
         ),
         child: Row(
           children: [
-            Icon(
-              icon,
-              color: isExpiringSoon ? Colors.orange[700] : Colors.grey[600],
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: isExpired
+                    ? Colors.red[600]
+                    : isExpiringSoon
+                    ? Colors.orange[600]
+                    : Colors.blue[600],
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, color: Colors.white, size: 20),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 16),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     label,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey[600],
-                    ),
+                    style: TextStyle(fontSize: 13, color: Colors.grey[600]),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 6),
                   Text(
                     date != null ? _formatDate(date) : 'Sélectionner une date',
                     style: TextStyle(
                       fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                      color: date != null ? Colors.black : Colors.grey[500],
+                      fontWeight: FontWeight.w600,
+                      color: date != null ? Colors.black87 : Colors.grey[500],
                     ),
                   ),
-                  if (isExpiringSoon)
-                    Text(
-                      'Expire bientôt !',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.orange[700],
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
                 ],
               ),
             ),
             Icon(
               Icons.calendar_today,
               size: 20,
-              color: Colors.grey[400],
+              color: isExpired
+                  ? Colors.red[600]
+                  : isExpiringSoon
+                  ? Colors.orange[600]
+                  : Colors.blue[600],
             ),
           ],
         ),
@@ -537,30 +562,22 @@ class _VehicleFormPageState extends State<VehicleFormPage> {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: _isLoading ? null : _saveVehicle,
+              onPressed: _isLoading || _isCompressing ? null : _saveVehicle,
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.blue[600],
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
               child: _isLoading
                   ? const SizedBox(
-                height: 20,
                 width: 20,
-                child: CircularProgressIndicator(
-                  color: Colors.white,
-                  strokeWidth: 2,
-                ),
+                height: 20,
+                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
               )
                   : Text(
                 _isEditing ? 'Modifier le véhicule' : 'Ajouter le véhicule',
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
               ),
             ),
           ),
@@ -570,21 +587,16 @@ class _VehicleFormPageState extends State<VehicleFormPage> {
               child: SizedBox(
                 width: double.infinity,
                 child: OutlinedButton(
-                  onPressed: _isLoading ? null : _deleteVehicle,
+                  onPressed: _isLoading || _isCompressing ? null : _deleteVehicle,
                   style: OutlinedButton.styleFrom(
                     foregroundColor: Colors.red,
-                    side: const BorderSide(color: Colors.red),
+                    side: const BorderSide(color: Colors.red, width: 2),
                     padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
                   child: const Text(
                     'Supprimer le véhicule',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                   ),
                 ),
               ),
@@ -602,32 +614,56 @@ class _VehicleFormPageState extends State<VehicleFormPage> {
       );
 
       final XFile? file = await openFile(acceptedTypeGroups: [typeGroup]);
-      if (file != null) {
-        final imageData = await file.readAsBytes();
+      if (file == null) return;
 
-        // Vérifier la taille (max 5MB)
-        if (imageData.length > 5 * 1024 * 1024) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('L\'image est trop volumineuse (max 5MB)'),
-                backgroundColor: Colors.red,
-              ),
-            );
-          }
-          return;
+      setState(() => _isCompressing = true);
+
+      final imageData = await file.readAsBytes();
+      print('Taille originale: ${_formatSize(imageData.length)}');
+
+      // Compresser l'image
+      final compressedData = await _compressImage(imageData);
+
+      if (compressedData == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Erreur lors de la compression de l\'image'),
+              backgroundColor: Colors.red,
+            ),
+          );
         }
-
-        setState(() {
-          _selectedImageData = imageData;
-          _selectedImageName = file.name;
-        });
+        return;
       }
+
+      print('Taille compressée: ${_formatSize(compressedData.length)}');
+
+      if (compressedData.length > maxImageSize) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Image trop volumineuse (${_formatSize(compressedData.length)}). '
+                    'Maximum: ${_formatSize(maxImageSize)}',
+              ),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+
+      setState(() {
+        _selectedImageData = compressedData;
+        _selectedImageName = file.name;
+        _isCompressing = false;
+      });
     } catch (e) {
+      setState(() => _isCompressing = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Erreur lors de la sélection de l\'image: $e'),
+            content: Text('Erreur: $e'),
             backgroundColor: Colors.red,
           ),
         );
@@ -635,80 +671,48 @@ class _VehicleFormPageState extends State<VehicleFormPage> {
     }
   }
 
+  Future<Uint8List?> _compressImage(Uint8List data) async {
+    try {
+      // Décoder l'image
+      img.Image? image = img.decodeImage(data);
+      if (image == null) return null;
+
+      // Redimensionner si trop grande
+      if (image.width > 1200 || image.height > 1200) {
+        image = img.copyResize(
+          image,
+          width: image.width > image.height ? 1200 : null,
+          height: image.height > image.width ? 1200 : null,
+        );
+      }
+
+      // Compresser en JPEG avec qualité progressive
+      int quality = 85;
+      Uint8List? compressed;
+
+      while (quality >= 50) {
+        compressed = Uint8List.fromList(img.encodeJpg(image, quality: quality));
+
+        if (compressed.length <= maxImageSize) {
+          break;
+        }
+
+        quality -= 10;
+      }
+
+      return compressed;
+    } catch (e) {
+      print('Erreur compression: $e');
+      return null;
+    }
+  }
+
   void _removeImage() {
     setState(() {
       _selectedImageData = null;
       _selectedImageName = null;
-      _existingPhotoUrl = null;
+      _existingPhotoBase64 = null;
     });
-  }
-
-  Future<void> _selectDate(BuildContext context, String dateType) async {
-    DateTime? initialDate;
-    DateTime firstDate;
-    DateTime lastDate;
-
-    switch (dateType) {
-      case 'purchase':
-        initialDate = _purchaseDate;
-        firstDate = DateTime(1990);
-        lastDate = DateTime.now();
-        break;
-      case 'insurance':
-        initialDate = _insuranceExpiry;
-        firstDate = DateTime.now();
-        lastDate = DateTime.now().add(const Duration(days: 365 * 5));
-        break;
-      case 'inspection':
-        initialDate = _inspectionExpiry;
-        firstDate = DateTime.now();
-        lastDate = DateTime.now().add(const Duration(days: 365 * 5));
-        break;
-      default:
-        return;
-    }
-
-    final clampedInitial = _clampDate(initialDate ?? DateTime.now(), firstDate, lastDate);
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: clampedInitial,
-      firstDate: firstDate,
-      lastDate: lastDate,
-      locale: const Locale('fr', 'FR'),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: ColorScheme.light(
-              primary: Colors.blue[600]!,
-              onPrimary: Colors.white,
-            ),
-          ),
-          child: child!,
-        );
-      },
-    );
-
-    if (picked != null) {
-      setState(() {
-        switch (dateType) {
-          case 'purchase':
-            _purchaseDate = picked;
-            break;
-          case 'insurance':
-            _insuranceExpiry = picked;
-            break;
-          case 'inspection':
-            _inspectionExpiry = picked;
-            break;
-        }
-      });
-    }
-  }
-
-  DateTime _clampDate(DateTime date, DateTime first, DateTime last) {
-    if (date.isBefore(first)) return first;
-    if (date.isAfter(last)) return last;
-    return date;
   }
 
   Future<void> _saveVehicle() async {
@@ -727,6 +731,14 @@ class _VehicleFormPageState extends State<VehicleFormPage> {
     setState(() => _isLoading = true);
 
     try {
+      // Convertir l'image en Base64 si présente
+      String? photoBase64;
+      if (_selectedImageData != null) {
+        photoBase64 = base64Encode(_selectedImageData!);
+      } else if (_existingPhotoBase64 != null) {
+        photoBase64 = _existingPhotoBase64;
+      }
+
       final vehicle = CarModel(
         id: _isEditing ? widget.vehicle!.id : '',
         brand: _brandController.text.trim(),
@@ -738,12 +750,12 @@ class _VehicleFormPageState extends State<VehicleFormPage> {
         purchaseDate: _purchaseDate!,
         insuranceExpiry: _insuranceExpiry!,
         inspectionExpiry: _inspectionExpiry!,
-        photoUrl: _existingPhotoUrl,
+        photoUrl: photoBase64, // Stocker le Base64 dans photoUrl
       );
 
       final result = _isEditing
-          ? await VehicleService.updateVehicle(vehicle.id, vehicle, imageData: _selectedImageData)
-          : await VehicleService.addVehicle(vehicle, imageData: _selectedImageData);
+          ? await VehicleService.updateVehicle(vehicle.id, vehicle)
+          : await VehicleService.addVehicle(vehicle);
 
       if (mounted) {
         if (result.isSuccess) {
@@ -830,10 +842,12 @@ class _VehicleFormPageState extends State<VehicleFormPage> {
   }
 
   String _formatDate(DateTime date) {
-    const months = [
-      'Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun',
-      'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'
-    ];
-    return '${date.day} ${months[date.month - 1]} ${date.year}';
+    return "${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}";
+  }
+
+  String _formatSize(int bytes) {
+    if (bytes < 1024) return '$bytes B';
+    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
+    return '${(bytes / (1024 * 1024)).toStringAsFixed(2)} MB';
   }
 }

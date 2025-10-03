@@ -152,6 +152,30 @@ class SyncService {
     await prefs.setString('vehicles_cache_time', DateTime.now().toIso8601String());
   }
 
+  /// Récupère les documents depuis le cache local
+  static Future<List<DocumentModel>> getCachedDocuments(String vehicleId) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final documentsString = prefs.getString('cached_documents_$vehicleId');
+
+      if (documentsString == null) return [];
+
+      final documentsJson = json.decode(documentsString) as List;
+      return documentsJson.map((json) => DocumentModel(
+        id: json['id'],
+        vehicleId: json['vehicleId'] ?? vehicleId, // ✅ Ajouté : important pour le constructeur
+        type: json['type'],
+        name: json['name'],
+        fileUrl: json['fileUrl'],
+        dateAdded: DateTime.parse(json['dateAdded']),
+        expiryDate: json['expiryDate'] != null ? DateTime.parse(json['expiryDate']) : null,
+      )).toList();
+    } catch (e) {
+      debugPrint('Erreur lecture cache documents: $e');
+      return [];
+    }
+  }
+
   /// Récupère les véhicules depuis le cache local
   static Future<List<CarModel>> getCachedVehicles() async {
     try {
@@ -181,10 +205,12 @@ class SyncService {
   }
 
   /// Sauvegarde les documents en local
+  /// Sauvegarde les documents en local
   static Future<void> _saveDocumentsLocally(String vehicleId, List<DocumentModel> documents) async {
     final prefs = await SharedPreferences.getInstance();
     final documentsJson = documents.map((d) => {
       'id': d.id,
+      'vehicleId': d.vehicleId, // ✅ On sauvegarde aussi ce champ
       'type': d.type,
       'name': d.name,
       'fileUrl': d.fileUrl,
@@ -195,28 +221,6 @@ class SyncService {
     await prefs.setString('cached_documents_$vehicleId', json.encode(documentsJson));
   }
 
-  /// Récupère les documents depuis le cache local
-  static Future<List<DocumentModel>> getCachedDocuments(String vehicleId) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final documentsString = prefs.getString('cached_documents_$vehicleId');
-
-      if (documentsString == null) return [];
-
-      final documentsJson = json.decode(documentsString) as List;
-      return documentsJson.map((json) => DocumentModel(
-        id: json['id'],
-        type: json['type'],
-        name: json['name'],
-        fileUrl: json['fileUrl'],
-        dateAdded: DateTime.parse(json['dateAdded']),
-        expiryDate: json['expiryDate'] != null ? DateTime.parse(json['expiryDate']) : null,
-      )).toList();
-    } catch (e) {
-      debugPrint('Erreur lecture cache documents: $e');
-      return [];
-    }
-  }
 
   /// Ajoute une opération en attente
   static Future<void> addPendingOperation({

@@ -1,13 +1,15 @@
 // lib/core/services/vehicle_service.dart
+import 'dart:convert';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'dart:typed_data';
 import '../models/vehicle.dart';
 
 class VehicleService {
   static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  static final FirebaseStorage _storage = FirebaseStorage.instance;
+
+  // Limite Firestore : 1MB par document
+  static const int maxImageSize = 800 * 1024; // 800KB
 
   // Collection reference pour l'utilisateur actuel
   static CollectionReference? get _userVehiclesCollection {
@@ -69,20 +71,22 @@ class VehicleService {
         return VehicleResult.error('Un véhicule avec cette plaque d\'immatriculation existe déjà');
       }
 
-      String? photoUrl;
+      String? photoBase64;
 
-      // Upload de la photo si fournie
+      // Convertir l'image en Base64 si fournie
       if (imageData != null) {
-        final uploadResult = await _uploadVehiclePhoto(vehicle.licensePlate, imageData);
-        if (uploadResult.isSuccess) {
-          photoUrl = uploadResult.data;
-        } else {
-          return VehicleResult.error('Erreur lors de l\'upload de la photo: ${uploadResult.errorMessage}');
+        if (imageData.length > maxImageSize) {
+          return VehicleResult.error(
+              'Image trop volumineuse (${_formatFileSize(imageData.length)}). '
+                  'Maximum: ${_formatFileSize(maxImageSize)}'
+          );
         }
+        photoBase64 = base64Encode(imageData);
+        print('Image encodée: ${_formatFileSize(photoBase64.length)} caractères');
       }
 
-      // Créer le véhicule avec la photo URL
-      final vehicleData = vehicle.copyWith(photoUrl: photoUrl).toMap();
+      // Créer le véhicule avec la photo en Base64
+      final vehicleData = vehicle.copyWith(photoUrl: photoBase64).toMap();
       vehicleData['createdAt'] = FieldValue.serverTimestamp();
       vehicleData['updatedAt'] = FieldValue.serverTimestamp();
 
@@ -95,7 +99,11 @@ class VehicleService {
   }
 
   // Mettre à jour un véhicule
-  static Future<VehicleResult> updateVehicle(String vehicleId, CarModel vehicle, {Uint8List? imageData}) async {
+  static Future<VehicleResult> updateVehicle(
+      String vehicleId,
+      CarModel vehicle, {
+        Uint8List? imageData,
+      }) async {
     final collection = _userVehiclesCollection;
     if (collection == null) {
       return VehicleResult.error('Utilisateur non connecté');
@@ -108,24 +116,22 @@ class VehicleService {
         return VehicleResult.error('Véhicule non trouvé');
       }
 
-      String? photoUrl = vehicle.photoUrl;
+      String? photoBase64 = vehicle.photoUrl;
 
-      // Upload de la nouvelle photo si fournie
+      // Convertir la nouvelle image en Base64 si fournie
       if (imageData != null) {
-        final uploadResult = await _uploadVehiclePhoto(vehicle.licensePlate, imageData);
-        if (uploadResult.isSuccess) {
-          // Supprimer l'ancienne photo si elle existe
-          if (vehicle.photoUrl != null) {
-            await _deleteVehiclePhoto(vehicle.photoUrl!);
-          }
-          photoUrl = uploadResult.data;
-        } else {
-          return VehicleResult.error('Erreur lors de l\'upload de la photo: ${uploadResult.errorMessage}');
+        if (imageData.length > maxImageSize) {
+          return VehicleResult.error(
+              'Image trop volumineuse (${_formatFileSize(imageData.length)}). '
+                  'Maximum: ${_formatFileSize(maxImageSize)}'
+          );
         }
+        photoBase64 = base64Encode(imageData);
+        print('Nouvelle image encodée: ${_formatFileSize(photoBase64.length)} caractères');
       }
 
       // Mettre à jour le véhicule
-      final vehicleData = vehicle.copyWith(photoUrl: photoUrl).toMap();
+      final vehicleData = vehicle.copyWith(photoUrl: photoBase64).toMap();
       vehicleData['updatedAt'] = FieldValue.serverTimestamp();
 
       await collection.doc(vehicleId).update(vehicleData);
@@ -144,18 +150,10 @@ class VehicleService {
     }
 
     try {
-      // Récupérer le véhicule pour obtenir l'URL de la photo
+      // Vérifier si le véhicule existe
       final doc = await collection.doc(vehicleId).get();
       if (!doc.exists) {
         return VehicleResult.error('Véhicule non trouvé');
-      }
-
-      final vehicleData = doc.data() as Map<String, dynamic>;
-      final photoUrl = vehicleData['photoUrl'] as String?;
-
-      // Supprimer la photo si elle existe
-      if (photoUrl != null) {
-        await _deleteVehiclePhoto(photoUrl);
       }
 
       // Supprimer tous les documents associés
@@ -163,19 +161,10 @@ class VehicleService {
       final documentsSnapshot = await documentsCollection.get();
 
       for (final docDoc in documentsSnapshot.docs) {
-        final docData = docDoc.data();
-        final fileUrl = docData['fileUrl'] as String?;
-
-        // Supprimer le fichier du storage
-        if (fileUrl != null) {
-          await _deleteFileFromStorage(fileUrl);
-        }
-
-        // Supprimer le document de Firestore
         await docDoc.reference.delete();
       }
 
-      // Supprimer le véhicule
+      // Supprimer le véhicule (la photo Base64 sera supprimée avec)
       await collection.doc(vehicleId).delete();
 
       return VehicleResult.success();
@@ -290,41 +279,21 @@ class VehicleService {
     }
   }
 
-  // Méthodes privées pour la gestion des fichiers
-
-  static Future<VehicleResult> _uploadVehiclePhoto(String licensePlate, Uint8List imageData) async {
-    try {
-      final userId = FirebaseAuth.instance.currentUser?.uid;
-      if (userId == null) return VehicleResult.error('Utilisateur non connecté');
-
-      final fileName = 'vehicle_${licensePlate}_${DateTime.now().millisecondsSinceEpoch}.jpg';
-      final ref = _storage.ref().child('users/$userId/vehicles/$fileName');
-
-      await ref.putData(imageData);
-      final downloadUrl = await ref.getDownloadURL();
-
-      return VehicleResult.success(data: downloadUrl);
-    } catch (e) {
-      return VehicleResult.error('Erreur lors de l\'upload: $e');
-    }
+  // Méthode utilitaire pour formater la taille
+  static String _formatFileSize(int bytes) {
+    if (bytes < 1024) return '$bytes B';
+    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
+    return '${(bytes / (1024 * 1024)).toStringAsFixed(2)} MB';
   }
 
-  static Future<void> _deleteVehiclePhoto(String photoUrl) async {
-    try {
-      final ref = _storage.refFromURL(photoUrl);
-      await ref.delete();
-    } catch (e) {
-      print('Erreur lors de la suppression de la photo: $e');
-    }
+  // Vérifier si une image est valide
+  static bool isImageSizeValid(int size) {
+    return size <= maxImageSize;
   }
 
-  static Future<void> _deleteFileFromStorage(String fileUrl) async {
-    try {
-      final ref = _storage.refFromURL(fileUrl);
-      await ref.delete();
-    } catch (e) {
-      print('Erreur lors de la suppression du fichier: $e');
-    }
+  // Obtenir la taille maximale formatée
+  static String getMaxImageSizeFormatted() {
+    return _formatFileSize(maxImageSize);
   }
 }
 

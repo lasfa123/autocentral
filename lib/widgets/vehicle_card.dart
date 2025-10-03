@@ -1,4 +1,5 @@
 // lib/widgets/vehicle_card.dart
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../core/models/vehicle.dart';
 
@@ -51,16 +52,7 @@ class VehicleCard extends StatelessWidget {
                       color: Colors.grey[100],
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: car.photoUrl != null
-                        ? ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: Image.network(
-                        car.photoUrl!,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) => _buildCarIcon(),
-                      ),
-                    )
-                        : _buildCarIcon(),
+                    child: _buildCarImage(),
                   ),
 
                   const SizedBox(width: 16),
@@ -89,18 +81,22 @@ class VehicleCard extends StatelessWidget {
                         const SizedBox(height: 4),
                         Row(
                           children: [
-                            Icon(Icons.calendar_today, size: 14, color: Colors.grey[500]),
+                            Icon(Icons.calendar_today,
+                                size: 14, color: Colors.grey[500]),
                             const SizedBox(width: 4),
                             Text(
                               '${car.year}',
-                              style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                              style: TextStyle(
+                                  color: Colors.grey[500], fontSize: 12),
                             ),
                             const SizedBox(width: 12),
-                            Icon(Icons.speed, size: 14, color: Colors.grey[500]),
+                            Icon(Icons.speed,
+                                size: 14, color: Colors.grey[500]),
                             const SizedBox(width: 4),
                             Text(
                               '${_formatMileage(car.mileage)} km',
-                              style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                              style: TextStyle(
+                                  color: Colors.grey[500], fontSize: 12),
                             ),
                           ],
                         ),
@@ -162,8 +158,10 @@ class VehicleCard extends StatelessWidget {
                           const PopupMenuItem(
                             value: 'delete',
                             child: ListTile(
-                              leading: Icon(Icons.delete, color: Colors.red),
-                              title: Text('Supprimer', style: TextStyle(color: Colors.red)),
+                              leading:
+                              Icon(Icons.delete, color: Colors.red),
+                              title: Text('Supprimer',
+                                  style: TextStyle(color: Colors.red)),
                               contentPadding: EdgeInsets.zero,
                             ),
                           ),
@@ -212,7 +210,8 @@ class VehicleCard extends StatelessWidget {
                     children: [
                       Icon(
                         hasExpired ? Icons.error : Icons.warning,
-                        color: hasExpired ? Colors.red[700] : Colors.orange[700],
+                        color:
+                        hasExpired ? Colors.red[700] : Colors.orange[700],
                         size: 20,
                       ),
                       const SizedBox(width: 8),
@@ -222,7 +221,9 @@ class VehicleCard extends StatelessWidget {
                               ? 'Des documents ont expiré !'
                               : 'Des documents expirent bientôt',
                           style: TextStyle(
-                            color: hasExpired ? Colors.red[700] : Colors.orange[700],
+                            color: hasExpired
+                                ? Colors.red[700]
+                                : Colors.orange[700],
                             fontSize: 14,
                             fontWeight: FontWeight.w500,
                           ),
@@ -236,6 +237,42 @@ class VehicleCard extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  /// 🧠 Gestion intelligente de l’image : URL, Base64 ou icône par défaut
+  Widget _buildCarImage() {
+    if (car.photoUrl != null && car.photoUrl!.isNotEmpty) {
+      final photo = car.photoUrl!;
+      final isBase64 = photo.startsWith('data:image') || photo.length > 300;
+
+      if (isBase64) {
+        try {
+          final base64String =
+          photo.contains(',') ? photo.split(',').last : photo;
+          return ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Image.memory(
+              base64Decode(base64String),
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) => _buildCarIcon(),
+            ),
+          );
+        } catch (e) {
+          print("❌ Erreur décodage base64: $e");
+          return _buildCarIcon();
+        }
+      } else {
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: Image.network(
+            photo,
+            fit: BoxFit.cover,
+            errorBuilder: (context, error, stackTrace) => _buildCarIcon(),
+          ),
+        );
+      }
+    }
+    return _buildCarIcon();
   }
 
   Widget _buildCarIcon() {
@@ -336,6 +373,6 @@ class VehicleCard extends StatelessWidget {
 // Extension pour formater les dates
 extension DateHelpers on DateTime {
   String toShortDateString() {
-    return "${day.toString().padLeft(2,'0')}/${month.toString().padLeft(2,'0')}/$year";
+    return "${day.toString().padLeft(2, '0')}/${month.toString().padLeft(2, '0')}/$year";
   }
 }

@@ -3,6 +3,10 @@ import 'package:flutter/material.dart';
 import '../../core/models/document.dart';
 import '../../core/services/document_service.dart';
 import 'document_form_page.dart';
+import 'dart:convert';
+import 'dart:typed_data';
+// NÉCESSITE LE PACKAGE 'pdfx'
+import 'package:pdfx/pdfx.dart';
 
 class DocumentListPage extends StatefulWidget {
   final String vehicleId;
@@ -24,18 +28,30 @@ class _DocumentListPageState extends State<DocumentListPage> {
   }
 
   Future<void> _loadDocuments() async {
+    // S'assurer que le chargement est à 'true' avant l'appel (bon pour le rafraîchissement)
+    if (_isLoading == false && mounted) {
+      setState(() => _isLoading = true);
+    }
+
     try {
       final documents = await DocumentService.getDocuments(widget.vehicleId);
-      setState(() {
-        _documents = documents;
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          // Tri par date pour s'assurer que le premier document est le plus récent
+          documents.sort((a, b) => b.dateAdded.compareTo(a.dateAdded));
+          _documents = documents;
+        });
+      }
     } catch (e) {
-      setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Erreur: $e')),
         );
+      }
+    } finally {
+      // Garantir que l'état de chargement est désactivé après le try/catch
+      if (mounted) {
+        setState(() => _isLoading = false);
       }
     }
   }
@@ -150,26 +166,26 @@ class _DocumentListPageState extends State<DocumentListPage> {
   }
 
   Widget _buildDocumentsList() {
-    // Grouper les documents par type
     final Map<String, List<DocumentModel>> groupedDocs = {};
     for (final doc in _documents) {
       groupedDocs.putIfAbsent(doc.type, () => []).add(doc);
     }
 
+    // Assurer que le document le plus récent est toujours le premier de son groupe pour l'affichage de l'expiration
+    groupedDocs.forEach((key, list) {
+      list.sort((a, b) => b.dateAdded.compareTo(a.dateAdded));
+    });
+
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        // Carte grise
         _buildDocumentTypeCard(
           'carte_grise',
           'Carte Grise',
           Icons.credit_card,
           groupedDocs['carte_grise'] ?? [],
         ),
-
         const SizedBox(height: 12),
-
-        // Assurance
         _buildDocumentTypeCard(
           'assurance',
           'Assurance',
@@ -177,10 +193,7 @@ class _DocumentListPageState extends State<DocumentListPage> {
           groupedDocs['assurance'] ?? [],
           hasExpiry: true,
         ),
-
         const SizedBox(height: 12),
-
-        // Visite technique
         _buildDocumentTypeCard(
           'visite',
           'Visite Technique',
@@ -189,8 +202,7 @@ class _DocumentListPageState extends State<DocumentListPage> {
           hasExpiry: true,
           isUrgent: _isVisiteTechniqueUrgent(groupedDocs['visite'] ?? []),
         ),
-
-        // Autres types de documents
+        // Autres documents non typés
         ...groupedDocs.keys
             .where((type) => !['carte_grise', 'assurance', 'visite'].contains(type))
             .map((type) => Padding(
@@ -214,8 +226,8 @@ class _DocumentListPageState extends State<DocumentListPage> {
         bool hasExpiry = false,
         bool isUrgent = false,
       }) {
-    final hasDocuments = documents.isNotEmpty;
-    final latestDoc = hasDocuments ? documents.first : null;
+    // Le document le plus récent est le premier grâce au tri dans _buildDocumentsList
+    final latestDoc = documents.isNotEmpty ? documents.first : null;
 
     return Container(
       decoration: BoxDecoration(
@@ -237,74 +249,42 @@ class _DocumentListPageState extends State<DocumentListPage> {
         borderRadius: BorderRadius.circular(12),
         child: Padding(
           padding: const EdgeInsets.all(16),
-          child: Column(
+          child: Row(
             children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: isUrgent
-                          ? Colors.red[50]
-                          : Colors.grey[100],
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Icon(
-                      icon,
-                      color: isUrgent ? Colors.red[600] : Colors.grey[600],
-                      size: 24,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          title,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        if (hasExpiry && latestDoc?.expiryDate != null)
-                          _buildExpiryInfo(latestDoc!.expiryDate!),
-                      ],
-                    ),
-                  ),
-                  Icon(
-                    Icons.arrow_forward_ios,
-                    size: 16,
-                    color: Colors.grey[400],
-                  ),
-                ],
-              ),
-
-              if (isUrgent && hasExpiry)
-                Container(
-                  margin: const EdgeInsets.only(top: 12),
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.red[50],
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.warning, color: Colors.red[600], size: 20),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'Ce document doit être renouvelé !',
-                          style: TextStyle(
-                            color: Colors.red[700],
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: isUrgent ? Colors.red[50] : Colors.grey[100],
+                  borderRadius: BorderRadius.circular(8),
                 ),
+                child: Icon(
+                  icon,
+                  color: isUrgent ? Colors.red[600] : Colors.grey[600],
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    if (hasExpiry && latestDoc?.expiryDate != null)
+                      _buildExpiryInfo(latestDoc!.expiryDate!),
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.arrow_forward_ios,
+                size: 16,
+                color: Colors.grey[400],
+              ),
             ],
           ),
         ),
@@ -315,7 +295,7 @@ class _DocumentListPageState extends State<DocumentListPage> {
   Widget _buildExpiryInfo(DateTime expiryDate) {
     final now = DateTime.now();
     final daysLeft = expiryDate.difference(now).inDays;
-    final isExpiring = daysLeft <= 30;
+    final isExpiring = daysLeft <= 30 && daysLeft >= 0; // Ajouté >= 0
     final isExpired = daysLeft < 0;
 
     String text;
@@ -347,8 +327,9 @@ class _DocumentListPageState extends State<DocumentListPage> {
     final latestDoc = documents.first;
     if (latestDoc.expiryDate == null) return false;
 
+    // L'urgence est ici définie à 2 jours
     final daysLeft = latestDoc.expiryDate!.difference(DateTime.now()).inDays;
-    return daysLeft <= 2; // Urgent si expire dans 2 jours ou moins
+    return daysLeft <= 2 && daysLeft >= 0;
   }
 
   String _getDocumentTypeLabel(String type) {
@@ -364,8 +345,9 @@ class _DocumentListPageState extends State<DocumentListPage> {
       case 'facture':
         return 'Factures';
       default:
+      // Pour les types personnalisés (ex: "autre_doc" -> "Autre Doc")
         return type.replaceAll('_', ' ').split(' ')
-            .map((word) => word[0].toUpperCase() + word.substring(1))
+            .map((word) => word.isNotEmpty ? word[0].toUpperCase() + word.substring(1) : '')
             .join(' ');
     }
   }
@@ -399,7 +381,6 @@ class _DocumentListPageState extends State<DocumentListPage> {
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
-
               // Header
               Padding(
                 padding: const EdgeInsets.all(16),
@@ -430,7 +411,6 @@ class _DocumentListPageState extends State<DocumentListPage> {
                   ],
                 ),
               ),
-
               // Documents list
               Expanded(
                 child: documents.isEmpty
@@ -438,11 +418,8 @@ class _DocumentListPageState extends State<DocumentListPage> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(
-                        Icons.description_outlined,
-                        size: 48,
-                        color: Colors.grey[400],
-                      ),
+                      Icon(Icons.description_outlined,
+                          size: 48, color: Colors.grey[400]),
                       const SizedBox(height: 16),
                       Text(
                         'Aucun document',
@@ -468,7 +445,30 @@ class _DocumentListPageState extends State<DocumentListPage> {
                   itemCount: documents.length,
                   itemBuilder: (context, index) {
                     final doc = documents[index];
-                    return _buildDocumentTile(doc);
+                    return InkWell(
+                      onTap: () async {
+                        if (doc.base64Data != null && doc.base64Data!.isNotEmpty) {
+                          final bytes = base64Decode(_cleanBase64(doc.base64Data!));
+                          final isPdf = doc.name.toLowerCase().endsWith('.pdf');
+
+                          await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => DocumentViewerPage(
+                                bytes: bytes,
+                                isPdf: isPdf,
+                                name: doc.name,
+                              ),
+                            ),
+                          );
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Aucun contenu à afficher')),
+                          );
+                        }
+                      },
+                      child: _buildDocumentTile(doc),
+                    );
                   },
                 ),
               ),
@@ -477,6 +477,52 @@ class _DocumentListPageState extends State<DocumentListPage> {
         ),
       ),
     );
+  }
+
+  String _cleanBase64(String base64String) {
+    if (base64String.startsWith('data:')) {
+      return base64String.split(',')[1];
+    }
+    return base64String;
+  }
+
+  Future<void> _openBase64Document(String base64Data, String fileName) async {
+    try {
+      final cleanData = _cleanBase64(base64Data);
+      final bytes = base64Decode(cleanData);
+
+      if (bytes.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Le fichier est vide ou corrompu')),
+          );
+        }
+        return;
+      }
+
+      final isPdf = fileName.toLowerCase().endsWith('.pdf');
+
+      if (mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => DocumentViewerPage(
+              bytes: bytes,
+              isPdf: isPdf,
+              name: fileName,
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      // Afficher l'erreur dans la console pour le débogage
+      print('Erreur ouverture document: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Erreur lors de l\'ouverture du document.')),
+        );
+      }
+    }
   }
 
   Widget _buildDocumentTile(DocumentModel document) {
@@ -496,40 +542,19 @@ class _DocumentListPageState extends State<DocumentListPage> {
               color: Colors.blue[50],
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Icon(
-              Icons.picture_as_pdf,
-              color: Colors.blue[600],
-              size: 24,
-            ),
+            // Utilisation d'une icône dynamique si le type de fichier est connu
+            child: Icon(document.name.toLowerCase().endsWith('.pdf') ? Icons.picture_as_pdf : Icons.image, color: Colors.blue[600], size: 24),
           ),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  document.name,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
+                Text(document.name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
                 const SizedBox(height: 4),
-                Text(
-                  'Ajouté le ${document.dateAdded.toShortDateString()}',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey[600],
-                  ),
-                ),
+                Text('Ajouté le ${document.dateAdded.toShortDateString()}', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
                 if (document.expiryDate != null)
-                  Text(
-                    'Expire le ${document.expiryDate!.toShortDateString()}',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: _getExpiryColor(document.expiryDate!),
-                    ),
-                  ),
+                  Text('Expire le ${document.expiryDate!.toShortDateString()}', style: TextStyle(fontSize: 12, color: _getExpiryColor(document.expiryDate!))),
               ],
             ),
           ),
@@ -537,6 +562,17 @@ class _DocumentListPageState extends State<DocumentListPage> {
             icon: Icon(Icons.more_vert, color: Colors.grey[600]),
             onSelected: (value) async {
               switch (value) {
+                case 'open':
+                  if (document.base64Data != null && document.base64Data!.isNotEmpty) {
+                    await _openBase64Document(document.base64Data!, document.name);
+                  } else {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Aucun contenu à afficher')),
+                      );
+                    }
+                  }
+                  break;
                 case 'download':
                   _downloadDocument(document);
                   break;
@@ -549,30 +585,10 @@ class _DocumentListPageState extends State<DocumentListPage> {
               }
             },
             itemBuilder: (context) => [
-              const PopupMenuItem(
-                value: 'download',
-                child: ListTile(
-                  leading: Icon(Icons.download),
-                  title: Text('Télécharger'),
-                  contentPadding: EdgeInsets.zero,
-                ),
-              ),
-              const PopupMenuItem(
-                value: 'share',
-                child: ListTile(
-                  leading: Icon(Icons.share),
-                  title: Text('Partager'),
-                  contentPadding: EdgeInsets.zero,
-                ),
-              ),
-              const PopupMenuItem(
-                value: 'delete',
-                child: ListTile(
-                  leading: Icon(Icons.delete, color: Colors.red),
-                  title: Text('Supprimer', style: TextStyle(color: Colors.red)),
-                  contentPadding: EdgeInsets.zero,
-                ),
-              ),
+              const PopupMenuItem(value: 'open', child: ListTile(leading: Icon(Icons.open_in_new), title: Text('Ouvrir'), contentPadding: EdgeInsets.zero)),
+              const PopupMenuItem(value: 'download', child: ListTile(leading: Icon(Icons.download), title: Text('Télécharger'), contentPadding: EdgeInsets.zero)),
+              const PopupMenuItem(value: 'share', child: ListTile(leading: Icon(Icons.share), title: Text('Partager'), contentPadding: EdgeInsets.zero)),
+              const PopupMenuItem(value: 'delete', child: ListTile(leading: Icon(Icons.delete, color: Colors.red), title: Text('Supprimer', style: TextStyle(color: Colors.red)), contentPadding: EdgeInsets.zero)),
             ],
           ),
         ],
@@ -588,17 +604,19 @@ class _DocumentListPageState extends State<DocumentListPage> {
   }
 
   void _downloadDocument(DocumentModel document) {
-    // TODO: Implémenter le téléchargement
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Téléchargement bientôt disponible')),
-    );
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Téléchargement bientôt disponible')),
+      );
+    }
   }
 
   void _shareDocument(DocumentModel document) {
-    // TODO: Implémenter le partage
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Partage bientôt disponible')),
-    );
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Partage bientôt disponible')),
+      );
+    }
   }
 
   Future<void> _deleteDocument(DocumentModel document) async {
@@ -608,24 +626,27 @@ class _DocumentListPageState extends State<DocumentListPage> {
         title: const Text('Supprimer le document'),
         content: Text('Êtes-vous sûr de vouloir supprimer "${document.name}" ?'),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Annuler'),
-          ),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Annuler')),
+          // CORRECTION: Utilisation du style ElevatedButton pour l'action principale destructrice
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Supprimer'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Supprimer')
           ),
         ],
       ),
     );
 
     if (confirm == true) {
-      // TODO: Implémenter la suppression
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Suppression bientôt disponible')),
-      );
+      if (mounted) {
+        // En attente de l'implémentation de DocumentService.deleteDocument(document.id)
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Suppression bientôt disponible')),
+        );
+      }
     }
   }
 }
@@ -634,5 +655,39 @@ class _DocumentListPageState extends State<DocumentListPage> {
 extension DateHelpers on DateTime {
   String toShortDateString() {
     return "${day.toString().padLeft(2,'0')}/${month.toString().padLeft(2,'0')}/$year";
+  }
+}
+
+// ------------------- Page pour afficher PDF ou image -------------------
+class DocumentViewerPage extends StatelessWidget {
+  final Uint8List bytes;
+  final bool isPdf;
+  final String name;
+
+  const DocumentViewerPage({
+    super.key,
+    required this.bytes,
+    required this.isPdf,
+    required this.name,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text(name)),
+      body: isPdf
+      // CORRECTION CRITIQUE: Le bloc if-else était mal formé.
+          ? PdfView(
+        controller: PdfController(
+          document: PdfDocument.openData(bytes),
+        ),
+      )
+          : Center(
+        // Utilisation de InteractiveViewer pour permettre le zoom et le déplacement des images
+        child: InteractiveViewer(
+          child: Image.memory(bytes),
+        ),
+      ),
+    );
   }
 }

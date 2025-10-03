@@ -1,4 +1,6 @@
 // lib/features/vehicles/vehicle_detail_page.dart
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import '../../core/models/vehicle.dart';
 import '../../core/services/vehicle_service.dart';
@@ -129,23 +131,40 @@ class _VehicleDetailPageState extends State<VehicleDetailPage> {
       padding: const EdgeInsets.all(20),
       child: Column(
         children: [
-          // Icône et nom du véhicule
+          // Photo ou icône + nom du véhicule
           Row(
             children: [
+              // ✅ Photo en Base64 si disponible
               Container(
-                width: 50,
-                height: 30,
+                width: 60,
+                height: 60,
                 decoration: BoxDecoration(
-                  color: Colors.red[600],
-                  borderRadius: BorderRadius.circular(6),
+                  color: Colors.grey[200],
+                  borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(
+                child: (_vehicle!.photoUrl != null && _vehicle!.photoUrl!.isNotEmpty)
+                    ? ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.memory(
+                    base64Decode(_vehicle!.photoUrl!),
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) => const Icon(
+                      Icons.directions_car,
+                      color: Colors.blue,
+                      size: 30,
+                    ),
+                  ),
+                )
+                    : const Icon(
                   Icons.directions_car,
-                  color: Colors.white,
-                  size: 20,
+                  color: Colors.blue,
+                  size: 30,
                 ),
               ),
+
               const SizedBox(width: 16),
+
+              // Infos principales
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -167,6 +186,8 @@ class _VehicleDetailPageState extends State<VehicleDetailPage> {
                   ],
                 ),
               ),
+
+              // Statut
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
@@ -201,7 +222,7 @@ class _VehicleDetailPageState extends State<VehicleDetailPage> {
 
           const SizedBox(height: 16),
 
-          // Informations rapides
+          // Infos rapides
           Row(
             children: [
               Icon(Icons.access_time, size: 16, color: Colors.green[600]),
